@@ -1,6 +1,6 @@
 library(mcclust)
 library(mcclust.ext)
-library(AntMAN)
+# library(AntMAN)
 library(klaR)
 library(TraMineR)
 library(readr)
