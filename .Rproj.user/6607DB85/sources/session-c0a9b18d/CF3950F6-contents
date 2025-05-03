@@ -1,0 +1,66 @@
+### marginal posterior mode of c_jk
+post.cent = apply(gibbs_param$Cent,c(2,3),moda)
+colnames(post.cent) = colnames(ghe.data)
+rownames(post.cent) = paste0("Cluster",1:nrow(post.cent))
+
+post.cent_lab = matrix(NA, nrow = nrow(post.cent), ncol = ncol(post.cent))
+for (i in 1:nrow(post.cent)) {
+  post.cent_lab[i,] = ghe.lab[post.cent[i,]]
+}
+dimnames(post.cent_lab) = dimnames(post.cent)
+
+ncauses = length(unique(ghe %>% select(CauseS) %>% unlist))
+palette = c(pals::alphabet(26)[-(4:5)], pals::alphabet2(26), pals::glasbey(32))[1:ncauses]
+names(palette) =  sort(table(ghe$CauseS %>% as.character()), decreasing = T) %>% names
+
+post.cent_order = pheatmap::pheatmap(post.cent, cluster_cols = F)$tree_row$order
+post.cent_lab %>% as.data.frame() %>% rownames_to_column("Cluster") %>% 
+  mutate(order = order(post.cent_order)) %>% 
+  pivot_longer(-c(Cluster, order), names_to = "Age", values_to = "CauseS") %>% 
+  mutate(Age = factor(Age, levels = levels(ghe$Age))) %>% 
+  ggplot(aes(x = Age, y = order)) +
+  geom_tile(aes(fill = CauseS), color = "white") +
+  scale_fill_manual(values = palette) +
+  guides(fill = guide_legend(nrow = 2)) + 
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 8))
+
+plt = ghe %>% 
+  filter(Year == 2000) %>%
+  unite("ID", c(CountryN, Sex), remove = FALSE) %>% 
+  mutate(ID = factor(ID, levels = rownames(df_sy)[hc$order]), .after = ID) %>% 
+  ggplot(aes(x = Age, y = ID, fill = CauseS)) +
+  geom_raster() + 
+  geom_text(aes(label = CauseS), size = 2) +
+  scale_fill_manual(values = palette) +
+  theme(legend.position = "none",
+        panel.grid = element_blank(),
+        plot.background = element_rect(fill = "white"),
+        panel.background = element_rect(fill = "white"),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+data_aux = unique(data %>% unite("ID", c(CountryN, Sex), remove = FALSE) %>% 
+                    mutate(ID = factor(ID, levels = rownames(df_sy)[hc$order]), .after = ID) %>% 
+                    select(ID, Sex, Region)) %>% pivot_longer(cols = -ID, names_to = "x", values_to = "fill") %>% 
+  mutate(x = factor(x, levels = c("Sex", "Region")))
+
+colors_aux = c("lightblue", "pink", "#EF476F", "#F78C6B", "#FFD166", "#06D6A0", "#118AB2", "#073B4C")
+names(colors_aux) = c("M", "F", "AF", "AM", "EM", "EU", "SEA", "WP")
+
+plt_aux = ggplot(data = data_aux) + 
+  geom_tile(aes(x = x, y = ID, fill = fill)) +
+  scale_fill_manual("Region", values = colors_aux) +
+  geom_text(aes(x = x, y = ID, label = fill), size = 2) +
+  theme(legend.position = "none",
+        panel.grid = element_blank(),
+        plot.background = element_rect(fill = "white"),
+        panel.background = element_rect(fill = "white"),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_blank())
+
+plt_out = plt_aux + plt + plot_layout(widths = c(1, 20))

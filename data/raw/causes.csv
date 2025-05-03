@@ -1,0 +1,81 @@
+CauseC;CauseT;CauseS
+420;Maternal conditions;MatCond
+1130;Ischaemic heart disease;HDisch
+1570;Drowning;Drown
+1630;Collective violence and legal intervention;CollViolLegInt
+1530;Road injury;Road
+500;Preterm birth complications;PretermCompl
+30;Tuberculosis;Tuberc
+150;Measles;Measles
+130;Whooping cough;WhoopCough
+1620;Interpersonal violence;InterpViol
+1580;Natural disasters;NatDis
+390;Lower respiratory infections;RespInfLow
+1400;Congenital anomalies;CongAnom
+395;COVID-19;COVID
+230;African trypanosomiasis;AfrTrypa
+100;HIV/AIDS;HIV/AIDS
+1140;Stroke;Stroke
+110;Diarrhoeal diseases;Diarrhoeal
+170;Meningitis;Mening
+220;Malaria;Malaria
+700;Breast cancer;CNCRbreast
+1610;Self-harm;Self-harm
+770;Leukaemia;Leukaemia
+710;Cervix uteri cancer;CNCRcervix
+751;Brain and nervous system cancers;CNCRnervous
+970;Epilepsy;Epilepsy
+1270;Kidney diseases;Kidney
+1540;Poisonings;Poison
+760;Lymphomas, multiple myeloma;Lymphomas
+510;Birth asphyxia and birth trauma;BirthTrauma
+812;Sickle cell disorders and trait;Sickle
+1230;Cirrhosis of the liver;Cirrhosis
+740;Prostate cancer;CNCRprostate
+1120;Hypertensive heart disease;HDhypertens
+800;Diabetes mellitus;Diabetes
+1110;Rheumatic heart disease;HDrheum
+1560;Fire, heat and hot substances;Fire
+1150;Cardiomyopathy, myocarditis, endocarditis;HDmusclevalve
+1180;Chronic obstructive pulmonary disease;ChrObsPulm
+1575;Exposure to mechanical forces;MechForces
+550;Protein-energy malnutrition;ProtMalnutr
+1190;Asthma;Asthma
+730;Ovary cancer;CNCRovary
+580;Iron-deficiency anaemia;AnaemiaIronDef
+620;Mouth and oropharynx cancers;CNCRmouth
+640;Stomach cancer;CNCRstomach
+650;Colon and rectum cancers;CNCRcolon
+50;Syphilis;Syphilis
+860;Alcohol use disorders;Alchool
+1241;Gastritis and duodenitis;Gastritis
+660;Liver cancer;CNCRliver
+680;Trachea, bronchus, lung cancers;CNCRrespir
+950;Alzheimer disease and other dementias;Alzheimer
+315;Yellow fever;YellowFev
+1330;Skin diseases;Skin
+186;Acute hepatitis A;HepA
+1550;Falls;Falls
+870;Drug use disorders;DrugUse
+752;Gallbladder and biliary tract cancer;CNCRgall
+320;Rabies;Rabies
+811;Thalassaemias;Thalass
+690;Melanoma and other skin cancers;CNCRskin
+920;Idiopathic intellectual disability;IntelDisIdio
+520;Neonatal sepsis and infections;NeonatSepInf
+745;Kidney cancer;CNCRkidney
+1244;Inflammatory bowel disease;InflBowel
+720;Corpus uteri cancer;CNCRcoruteri
+670;Pancreas cancer;CNCRpancreas
+400;Upper respiratory infections;RespInfUpp
+1470;Oral conditions;Oral
+1242;Paralytic ileus and intestinal obstruction;IntestStop
+300;Dengue;Dengue
+1505;Sudden infant death syndrome;InfSudden
+750;Bladder cancer;CNCRbladder
+742;Testicular cancer;CNCRtestic
+1248;Pancreatitis;Pancreatitis
+190;Acute hepatitis B;HepB
+160;Tetanus;Tetanus
+260;Leishmaniasis;Leish
+753;Larynx cancer;CNCRlarynx
