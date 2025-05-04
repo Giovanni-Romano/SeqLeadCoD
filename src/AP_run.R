@@ -1,3 +1,4 @@
+source("renv/activate.R")
 library(mcclust)
 library(mcclust.ext)
 library(AntMAN)
@@ -106,6 +107,19 @@ sim_ghe = gibbs_mix_con(G=G,
                         M.na.init =M.na.init,
                         M.max=100)
 
+foldersave = "output/AP_indmod/"
+if (!dir.exists(foldersave)) {
+  dir.create(foldersave, recursive = TRUE)
+}
+saveRDS(list(
+  sim_ghe = sim_ghe,
+  gibbs_param = gibbs_param,
+  post_k = post_k,
+  psm = psm,
+  pred_VI = pred_VI,
+  Kest = Kest
+), file = paste0(foldersave, "/APout_", year, ".rds"))
+
 g.idx = 2+(0:G)
 # posterior K
 post_k = table(sim_ghe$k[g.idx])/length(g.idx)
@@ -116,7 +130,6 @@ psm = comp.psm(sim_ghe$C[g.idx, ])
 # estimated clusters
 pred_VI = minVI(psm)$cl
 table(pred_VI)
-
 
 ###### parameters estimation #########
 source("src/ArgientoPaci/code/gibbs_param_estim2.R")
@@ -139,10 +152,6 @@ gibbs_param = gibbs_param_estim(G=5*10^3,
                                 Sm.init = sim_ghe$Sm[[length(sim_ghe$Sm)]][1:Kest]
 )
 
-foldersave = "output/AP_indmod/"
-if (!dir.exists(foldersave)) {
-  dir.create(foldersave, recursive = TRUE)
-}
 saveRDS(list(
   sim_ghe = sim_ghe,
   gibbs_param = gibbs_param,
