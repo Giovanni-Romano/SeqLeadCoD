@@ -1,6 +1,6 @@
 library(mcclust)
 library(mcclust.ext)
-# library(AntMAN)
+library(AntMAN)
 library(klaR)
 library(TraMineR)
 library(readr)
@@ -90,9 +90,11 @@ sigma.init = matrix(0.5,nrow = (k.init+M.na.init), ncol=p)
 
 
 ### RUN GIBBS SAMPLER ###
+burn = 5*10^3
+G = 30*10^3
 set.seed(20146)
-sim_ghe = gibbs_mix_con(G=1000,
-                        burnin = 1000,
+sim_ghe = gibbs_mix_con(G=G,
+                        burnin = burn,
                         data=ghe.data,
                         u=u,v=v,
                         Lambda = Lambda,
@@ -103,11 +105,13 @@ sim_ghe = gibbs_mix_con(G=1000,
                         sigma.init = sigma.init,
                         M.na.init =M.na.init,
                         M.max=100)
+
+g.idx = 2+(0:G)
 # posterior K
-post_k = table(sim_ghe$k[2:1002])/length(2:1002)
+post_k = table(sim_ghe$k[g.idx])/length(g.idx)
 
 # posterior similarity matrix
-psm = comp.psm(sim_ghe$C[2:1002,])
+psm = comp.psm(sim_ghe$C[g.idx, ])
 
 # estimated clusters
 pred_VI = minVI(psm)$cl
@@ -124,7 +128,7 @@ for(i in 1:Kest){
 }
 
 set.seed(5)
-gibbs_param = gibbs_param_estim(G=1000,
+gibbs_param = gibbs_param_estim(G=5*10^3,
                                 gam=gam,
                                 data=ghe.data,
                                 u=u,
@@ -135,3 +139,15 @@ gibbs_param = gibbs_param_estim(G=1000,
                                 Sm.init = sim_ghe$Sm[[length(sim_ghe$Sm)]][1:Kest]
 )
 
+foldersave = "output/AP_indmod/"
+if (!dir.exists(foldersave)) {
+  dir.create(foldersave, recursive = TRUE)
+}
+saveRDS(list(
+  sim_ghe = sim_ghe,
+  gibbs_param = gibbs_param,
+  post_k = post_k,
+  psm = psm,
+  pred_VI = pred_VI,
+  Kest = Kest
+), file = paste0(foldersave, "/APout_", year, ".rds"))
