@@ -1,0 +1,6 @@
+- Year: anni dal 2000 al 2021
+- Age: classi d'età con 19 modalità ("0-1"   "1-4"   "5-9"   "10-14" "15-19" "20-24" "25-29" "30-34" "35-39" "40-44" "45-49" "50-54" "55-59" "60-64" "65-69" "70-74" "75-79" "80-84" "85+")
+- Sex: genere con valori "F" e "M"
+- Country e CountryN: rispettivamente il codice in 3 caratteri e il nome del paese (e.g. AFG è il codice di Afghanistan)
+- CauseC, CauseT e CauseS: rispettivamente codice numerico, nome e abbreviazione delle cause di morte (e.g., 1130 è il codice di "Ischaemic heart disease", che viene abbreviato in HDisch)
+- Region: sigla della regione geografica ("EM" = "Eastern Mediterranean", "AF" = "Africa", "EU" = "Europe", "AM" = "Americas", "WP" = "Western Pacific", "SEA" = "South-East Asia")
