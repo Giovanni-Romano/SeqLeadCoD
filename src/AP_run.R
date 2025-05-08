@@ -10,64 +10,48 @@ source('src/ArgientoPaci/code/gibbs_sampler2.R', echo=TRUE)
 source('src/ArgientoPaci/code/complement_functions.R')
 
 
-
-
 #GHE data ----
-causes = read_csv2("data/raw/causes.csv", col_types = cols(.default = "character"))
-countries = read_csv2("data/raw/countries.csv", col_types = cols(.default = "character")) %>% 
-  mutate(ParentCode = gsub("R", "", ParentCode) )
-ghe = read_csv2("data/raw/WHO_GHE_Top1.csv", 
-                col_types = cols(DIM_GHECAUSE_CODE = col_character())) %>% 
-  select(-VAL_DTHS_RATE100K_NUMERIC) %>% 
-  rename_with(~ gsub("DIM_", "", .), starts_with("DIM_")) %>% 
-  rename(Country = COUNTRY_CODE, Year = YEAR_CODE,
-         CauseC = GHECAUSE_CODE, CauseT = GHECAUSE_TITLE,
-         Age = AGEGROUP_CODE, Sex = SEX_CODE) %>% 
-  filter(!(Age %in% c("D0T27", "M1T11", "TOTAL"))) %>% 
-  left_join(causes, by = c("CauseC", "CauseT")) %>%
-  left_join(countries %>% 
-              rename(CountryN = Title,
-                     Region = ParentCode) %>% 
-              select(Code, CountryN, Region), by = c("Country" = "Code")) %>% 
-  mutate(Sex = if_else(Sex == "FEMALE", "F", "M"),
-         Age = case_when(Age == "YGE_85" ~ "85+",
-                         .default = gsub("Y(\\d{1,2})T(\\d{1,2})", "\\1-\\2", Age)),
-         mutate(across(where(is.character), as.factor))) %>% 
-  select(Year, Country, CountryN, Age, Sex, CauseC, CauseS, CauseT, Region)
-ghe$Age = factor(ghe$Age, levels = c("0-1", "1-4", "5-9", 
-                                     "10-14", "15-19", "20-24", 
-                                     "25-29", "30-34", "35-39", 
-                                     "40-44", "45-49", "50-54", 
-                                     "55-59", "60-64", "65-69", 
-                                     "70-74", "75-79", "80-84", 
-                                     "85+"))
+ghe = readRDS("data/rds/dataGHE.RDS") %>% 
+  unite("ID", c(CountryN, Sex), remove = F) %>% 
+  select(Year, ID, Country, CountryN, Age, CauseS, CauseT, CauseC, Region, Sex)
 
-ghe.listchr = lapply(split(ghe %>% select(Year, CountryN, Sex, Age, CauseS), ghe$Year),
-                     function(df) df %>% select(-Year) %>% 
-                       pivot_wider(names_from = Age, values_from = CauseS) %>%
-                       unite("ID", c(CountryN, Sex)) %>% column_to_rownames("ID") %>% 
-                       select(levels(ghe$Age)) %>% 
-                       as.matrix())
-ghe.lab = levels(ghe$CauseS)
-
-ghe.list = replicate(length(ghe.listchr), matrix(0, nrow = nrow(ghe.listchr[[1]]), ncol = ncol(ghe.listchr[[1]])), 
-                     simplify = F)
-for (j in seq_along(ghe.list)) {
-  for (i in seq_along(ghe.lab)) {
-    ghe.list[[j]][ghe.listchr[[j]] == ghe.lab[i]] = i
-  }
-  
-  rownames(ghe.list[[j]]) = rownames(ghe.listchr[[j]])
-  colnames(ghe.list[[j]]) = colnames(ghe.listchr[[j]])
-}
 
 ## Select single year ----
-year = commandArgs(trailingOnly = TRUE) %>% as.numeric()
-ghe.data = ghe.list[[year]]
-ages=colnames(ghe.data)
-p = ncol(ghe.data)
-n = nrow(ghe.data)
-m = rep(length(ghe.lab), p)
+year = 1999+as.numeric(commandArgs(trailingOnly = TRUE))
+
+ghe.lab = unique(ghe %>% filter(Year == year) %>% select(c("Age", "CauseS"))) %>% 
+  group_by(Age) %>% 
+  mutate(CauseI = as.integer(factor(CauseS)))
+
+nIDs = length(unique(ghe$ID))
+ages = levels(ghe$Age)
+nages = length(ages)
+
+ghe.chr = ghe %>% filter(Year == year) %>% select(c("ID", "Age", "CauseS")) %>% 
+  arrange(Age) %>%
+  pivot_wider(names_from = Age, values_from = CauseS) %>% 
+  arrange(ID) %>% 
+  column_to_rownames("ID") %>% as.matrix()
+
+ghe.data = matrix(0, nrow = nIDs, ncol = nages)
+
+for (j in 1:nages) {
+  lab.tmp = ghe.lab %>% filter(Age == ages[j])
+  
+  for (i in 1:nIDs) {
+    ghe.data[i,j] = lab.tmp$CauseI[lab.tmp$CauseS == ghe.chr[i,j]]
+  }
+  
+}
+
+
+p = nages
+n = nIDs
+m = ghe.lab %>% 
+  group_by(Age) %>% 
+  summarise(m = length(unique(CauseS))) %>% 
+  pull(m)
+
 
 ###########################################################################
 
@@ -76,24 +60,48 @@ Kstar = 15
 
 # prior hyperparameters
 Lambda = Kstar
-gam = 1
+gam = AntMAN::AM_find_gamma_Pois(n=n, Lambda=Lambda,Kstar=15)
+# gam = 1
 prior = AM_prior_K_Pois(n=n, gam, Lambda = Lambda)
-u = rep(55, p)
-v = rep(1e-3, p)
+# u = rep(4, 12)#c(rep(4.5, 4), rep(4, 4), rep(3.5, 4))
+# v = rep(0.25, length(m_unique))
+# val = cbind(m_unique, u, v)
+# nsig = 10^4
+# S  = apply(val, 1, function(x) rhyper_sig2(n = nsig, c = x[2], d = x[3], m = x[1]), simplify = T)
+# 
+# G_max <- 1 - 1 / m_unique
+# 
+# gini_values = {
+#   expS = (exp(2 / S) + (matrix(rep(m_unique - 1, each = nrow(S)), ncol = length(m_unique)))) /
+#     (exp(1 / S) + (matrix(rep(m_unique - 1, each = nrow(S)), ncol = length(m_unique))))^2
+#   expS[S < 0.01] = 1
+#   gini_values = t( (1 - t(expS)) / G_max )
+# }
+# 
+# par(mfrow = c(3, 4))
+# for (j in 1:ncol(gini_values)){
+#   hist(gini_values[ , j], freq = F, breaks = 21, main = paste0("N-Gini, v=", round(u[j], 2), ", w=", round(v[j], 2)),
+#        xlab = "Gini values", ylab = "Density", col = "lightblue", border = "black")
+# }
+u = rep(4, p)
+v = rep(0.25, p)
 
 ## initial values
-k.init = 20
-M.na.init = 30
-set.seed(20146)
+k.init = ceiling(0.9*n)
+M.na.init = n-k.init
+seed_init = 20146
+set.seed(seed_init)  
 C.init = sample(1:k.init,n,replace=T)
 cent.init = matrix(sample(1:m[1],k.init+M.na.init,replace=T),nrow = (k.init+M.na.init), ncol=p)
 sigma.init = matrix(0.5,nrow = (k.init+M.na.init), ncol=p)
 
 
 ### RUN GIBBS SAMPLER ###
-burn = 5*10^3
-G = 30*10^3
-set.seed(20146)
+burn = 5
+G = 35*10^3
+
+seed_sim = 20146
+set.seed(seed_sim)
 sim_ghe = gibbs_mix_con(G=G,
                         burnin = burn,
                         data=ghe.data,
@@ -105,20 +113,8 @@ sim_ghe = gibbs_mix_con(G=G,
                         cent.init = cent.init,
                         sigma.init = sigma.init,
                         M.na.init =M.na.init,
-                        M.max=100)
+                        M.max=n)
 
-foldersave = "output/AP_indmod/"
-if (!dir.exists(foldersave)) {
-  dir.create(foldersave, recursive = TRUE)
-}
-saveRDS(list(
-  sim_ghe = sim_ghe,
-  gibbs_param = gibbs_param,
-  post_k = post_k,
-  psm = psm,
-  pred_VI = pred_VI,
-  Kest = Kest
-), file = paste0(foldersave, "/APout_", year, ".rds"))
 
 g.idx = 2+(0:G)
 # posterior K
@@ -131,6 +127,23 @@ psm = comp.psm(sim_ghe$C[g.idx, ])
 pred_VI = minVI(psm)$cl
 table(pred_VI)
 
+
+foldersave = "output/AP_prova/"
+if (!dir.exists(foldersave)) {
+  dir.create(foldersave, recursive = TRUE)
+}
+saveRDS(list(
+  sim_ghe = sim_ghe,
+  param = list("v" = u, "w" = v, "Lambda" = Lambda, "gam" = gam, "Kstar" = Kstar),
+  init_values = list("K" = k.init, "M.na" = M.na.init, "C" = C.init,
+                     "cent" = cent.init, "sigma" = sigma.init),
+  seed = list("init" = seed_init, "sim" = seed_sim),
+  inference = list("post_k" = post_k,
+                   "psm" = psm,
+                   "pred_VI" = pred_VI),
+  data = list("year" = year, "data" = ghe.data, "ghe.lab" = ghe.lab, "ghe.chr" = ghe.chr),
+), file = paste0(foldersave, "/APout_", year, ".rds"))
+
 ###### parameters estimation #########
 source("src/ArgientoPaci/code/gibbs_param_estim2.R")
 Kest = length(unique(pred_VI))
@@ -140,7 +153,8 @@ for(i in 1:Kest){
   sigma.last[i,] = sim_ghe$Sigma[[i]][nrow(sim_ghe$Cent[[i]]),]
 }
 
-set.seed(5)
+seed_param = 5
+set.seed(seed_param)
 gibbs_param = gibbs_param_estim(G=5*10^3,
                                 gam=gam,
                                 data=ghe.data,
@@ -154,9 +168,13 @@ gibbs_param = gibbs_param_estim(G=5*10^3,
 
 saveRDS(list(
   sim_ghe = sim_ghe,
-  gibbs_param = gibbs_param,
-  post_k = post_k,
-  psm = psm,
-  pred_VI = pred_VI,
-  Kest = Kest
+  param = list("v" = u, "w" = v, "Lambda" = Lambda, "gam" = gam, "Kstar" = Kstar),
+  init_values = list("K" = k.init, "M.na" = M.na.init, "C" = C.init,
+                     "cent" = cent.init, "sigma" = sigma.init),
+  seed = list("init" = seed_init, "sim" = seed_sim),
+  inference = list("post_k" = post_k,
+                   "psm" = psm,
+                   "pred_VI" = pred_VI,
+                   "Kest" = Kest),
+  gibbs_param = gibbs_param
 ), file = paste0(foldersave, "/APout_", year, ".rds"))
