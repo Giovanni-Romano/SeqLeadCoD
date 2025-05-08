@@ -141,7 +141,7 @@ saveRDS(list(
   inference = list("post_k" = post_k,
                    "psm" = psm,
                    "pred_VI" = pred_VI),
-  data = list("year" = year, "data" = ghe.data, "ghe.lab" = ghe.lab, "ghe.chr" = ghe.chr),
+  data = list("year" = year, "data" = ghe.data, "ghe.lab" = ghe.lab, "ghe.chr" = ghe.chr)
 ), file = paste0(foldersave, "/APout_", year, ".rds"))
 
 ###### parameters estimation #########
@@ -176,5 +176,6 @@ saveRDS(list(
                    "psm" = psm,
                    "pred_VI" = pred_VI,
                    "Kest" = Kest),
-  gibbs_param = gibbs_param
+  gibbs_param = gibbs_param,
+  data = list("year" = year, "data" = ghe.data, "ghe.lab" = ghe.lab, "ghe.chr" = ghe.chr)
 ), file = paste0(foldersave, "/APout_", year, ".rds"))
