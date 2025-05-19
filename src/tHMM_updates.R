@@ -124,24 +124,24 @@ update_label = function(i,
   }
   
   # Log-likelihoods of old and new clusters
-  log_lik_cpp = dhamming_multicluster_cpp(Y_it, rbind(mu, mu.new), rbind(sigma, sigma.new), m, logscale = TRUE)
-  log_lik = dhamming.multicluster(Y_it, rbind(mu, mu.new), rbind(sigma, sigma.new), m, logscale = TRUE)
+  log_lik = dhamming_multicluster_cpp(Y_it, rbind(mu, mu.new), rbind(sigma, sigma.new), m, logscale = TRUE)
+  # log_lik = dhamming.multicluster(Y_it, rbind(mu, mu.new), rbind(sigma, sigma.new), m, logscale = TRUE)
   
-  if (any(round(log_lik, 6) != round(log_lik_cpp, 6))){
-    browser()
-  }
+  # if (any(round(log_lik, 6) != round(log_lik_cpp, 6))){
+  #   browser()
+  # }
   
   # Log-prior of old and new clusters
   log_pr = log(urn_GN(n_mi, eta))
   
   # Compatibility checks
-  comp_checks_cpp = compatibility_check_cppwrapper(i = i, H = H, gamma_tp1 = gamma_tp1,
+  comp_checks = compatibility_check_cppwrapper(i = i, H = H, gamma_tp1 = gamma_tp1,
                                                    c_t = C_t, c_tp1 = C_tp1)
-  comp_checks = compatibility_check(i, H, k, gamma_tp1, C_t, C_tp1, safe = FALSE)
+  # comp_checks = compatibility_check(i, H, k, gamma_tp1, C_t, C_tp1, safe = FALSE)
   
-  if (any(comp_checks != comp_checks_cpp)){
-    browser()
-  }
+  # if (any(comp_checks != comp_checks_cpp)){
+  #   browser()
+  # }
   
   # Full-conditional probabilities of cluster assignments
   log_prob = log_lik + log_pr + log(comp_checks)

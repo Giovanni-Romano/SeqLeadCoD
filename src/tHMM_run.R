@@ -52,7 +52,7 @@ out = tHMM_gibbs(
   # Control parameters for MCMC settings
   ctr_mcmc = list(seed = 1234, nburnin = 1, nchain = 4, print_step = 1, verbose = "2"),
   # Control parameters for result storing
-  ctr_save = list(save = FALSE, filepath = "",
+  ctr_save = list(save = TRUE, filepath = "output/tHMM/",
                   filename = paste("res_", Sys.Date(), ".RDS", sep = ""))
 )
 f = Sys.time()

@@ -78,6 +78,11 @@ tHMM_gibbs = function(
   alpha.tmp = alpha.init
   gamma.tmp = gamma.init
   
+  # Counter for intermediate saves
+  counter_save = 0L
+  # How many iter between intermediate saves
+  iter_to_save = 2500
+  
   # Gibbs sampling loop
   for (d in 1:niter) {
     for (t in 1:.T) { # Loop in t ----
@@ -268,6 +273,39 @@ tHMM_gibbs = function(
           cat("\r", "  update: alpha  done!")
         }
       }
+      # Store the results
+      C[ , t, d] = mat2vec(C.tmp[[.T]])
+      alpha[t, d] = alpha.tmp[t]
+    }
+    
+    
+    
+    if ( (d %% iter_to_save == 0) & ctr_save$save){
+      cat("\n Intermediate save at iter. ", d, sep = " ")
+      
+      counter_save = counter_save + 1L
+      exec_time = Sys.time() - time_start
+      inter_save_filename = paste0(gsub(".RDS", "", ctr_save$filename), "_part", counter_save, ".RDS")
+      
+      out = list(input = list(Y = Y, m = m,
+                              par = list(par_likelihood = par_likelihood,
+                                         par_tRPM = par_tRPM),
+                              ctr = list(ctr_mcmc = ctr_mcmc,
+                                         ctr_save = ctr_save)),
+                 output = list(C = C[ , , 1:d], alpha = alpha[ , 1:d]))
+      
+      saveRDS(out, paste(ctr_save$filepath, inter_save_filename, sep = ""))
+      
+      rm(out); rm(traces_to_save); gc()
+    } else if (d == 2 & ctr_save$save){
+      exec_time = Sys.time() - time_start
+      out = list(input = list(Y = Y, m = m,
+                              par = list(par_likelihood = par_likelihood,
+                                         par_tRPM = par_tRPM),
+                              ctr = list(ctr_mcmc = ctr_mcmc,
+                                         ctr_save = ctr_save)),
+                 output = list(C = C, alpha = alpha))
+      saveRDS(out, paste(ctr_save$filepath, ctr_save$filename, sep = ""))
     }
   }
   
@@ -275,6 +313,14 @@ tHMM_gibbs = function(
                           par = list(par_likelihood = par_likelihood,
                                      par_tRPM = par_tRPM),
                           ctr = list(ctr_mcmc = ctr_mcmc,
-                                      ctr_save = ctr_save)),
+                                     ctr_save = ctr_save)),
              output = list(C = C, alpha = alpha))
+  
+  if (ctr_save$save) {
+    if (!dir.exists(ctr_save$filepath)) {
+      warning("The provided path_save does not exist. Creating it. \n") 
+      dir.create(ctr_save$filepath, recursive = T)}
+    cat("Saving out in RDS at path: ", paste0(ctr_save$filepath, ctr_save$filename, sep = ""), "\n")
+    saveRDS(out, paste(ctr_save$filepath, ctr_save$filename, sep = ""))
+  }
 }
