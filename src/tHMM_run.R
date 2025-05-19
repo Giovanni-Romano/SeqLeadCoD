@@ -37,7 +37,12 @@ exp_ncl = sapply(eta, function(e) {
 })
 cbind(gamma = eta, exp_ncl = exp_ncl)
 
-i = Sys.time()
+
+seedrun = 20148
+nburn = 2000
+nchain = 10000
+printstep = 250
+
 out = tHMM_gibbs(
   Y = ghe.array,
   m = m,
@@ -47,13 +52,11 @@ out = tHMM_gibbs(
   ),
   # Parameters for the tRPM process prior
   par_tRPM = list(a_alpha = 1, b_alpha = 1, # Beta prior on alpha
-                  eta = 0.4 # Gnedin parameter
+                  eta = eta # Gnedin parameter
   ),
   # Control parameters for MCMC settings
-  ctr_mcmc = list(seed = 1234, nburnin = 1, nchain = 4, print_step = 1, verbose = "2"),
+  ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, verbose = "2"),
   # Control parameters for result storing
   ctr_save = list(save = TRUE, filepath = "output/tHMM/",
-                  filename = paste("res_", Sys.Date(), ".RDS", sep = ""))
+                  filename = paste("res_", seedrun, ".RDS", sep = ""))
 )
-f = Sys.time()
-f-i

@@ -21,7 +21,7 @@ tHMM_gibbs = function(
       warning("The provided path_save does not exist. Creating it. \n")
       dir.create(ctr_save$filepath, recursive = T)
     }
-    cat("Saving out in RDS at path: ", paste0(ctr_save$filepath, ctr_save$filename, sep = ""), "\n")
+    cat("##############################\n", "Saving out in RDS at path: ", paste0(ctr_save$filepath, ctr_save$filename, sep = ""), "\n", sep = "")
   }
   
   
@@ -82,6 +82,13 @@ tHMM_gibbs = function(
   counter_save = 0L
   # How many iter between intermediate saves
   iter_to_save = 2500
+  
+  
+  # Elapsed time initialization
+  time_start = time_last = Sys.time()
+  cat("Start Gibbs of ", niter, " iterations\n", 
+      "##############################\n",
+      sep = "")
   
   # Gibbs sampling loop
   for (d in 1:niter) {
@@ -278,43 +285,73 @@ tHMM_gibbs = function(
       alpha[t, d] = alpha.tmp[t]
     }
     
-    
+    if (verbose > 0) {
+      if (d %% print_step == 0) {
+        now = Sys.time()
+        diff_time_start = round(difftime(now, time_start, units = "mins"), 2)
+        diff_time_last = round(difftime(now, time_last, units = "mins"), 2)
+        clock_time = format(Sys.time(), "%H:%M:%S")
+        cat("\n\n",
+            "##############################\n",
+            "total exe time: ", diff_time_start, " mins \n  ",
+            "last ", ctr_mcmc$print_step, " iter time: ", diff_time_last, " mins \n  ", 
+            "print clock time: ", clock_time, "\n", 
+            "##############################\n",
+            sep = "")
+        time_last = now
+      }
+    }
     
     if ( (d %% iter_to_save == 0) & ctr_save$save){
       cat("\n Intermediate save at iter. ", d, sep = " ")
-      
       counter_save = counter_save + 1L
-      exec_time = Sys.time() - time_start
       inter_save_filename = paste0(gsub(".RDS", "", ctr_save$filename), "_part", counter_save, ".RDS")
+      now = Sys.time()
+      diff_time_start = round(difftime(now, time_start, units = "mins"), 2)
       
       out = list(input = list(Y = Y, m = m,
                               par = list(par_likelihood = par_likelihood,
                                          par_tRPM = par_tRPM),
                               ctr = list(ctr_mcmc = ctr_mcmc,
                                          ctr_save = ctr_save)),
-                 output = list(C = C[ , , 1:d], alpha = alpha[ , 1:d]))
+                 output = list(C = C[ , , 1:d], alpha = alpha[ , 1:d]),
+                 execution_time = diff_time_start)
       
       saveRDS(out, paste(ctr_save$filepath, inter_save_filename, sep = ""))
       
-      rm(out); rm(traces_to_save); gc()
+      rm(out); gc()
     } else if (d == 2 & ctr_save$save){
-      exec_time = Sys.time() - time_start
+      now = Sys.time()
+      diff_time_start = round(difftime(now, time_start, units = "mins"), 2)
       out = list(input = list(Y = Y, m = m,
                               par = list(par_likelihood = par_likelihood,
                                          par_tRPM = par_tRPM),
                               ctr = list(ctr_mcmc = ctr_mcmc,
                                          ctr_save = ctr_save)),
-                 output = list(C = C, alpha = alpha))
+                 output = list(C = C, alpha = alpha),
+                 execution_time = diff_time_start)
       saveRDS(out, paste(ctr_save$filepath, ctr_save$filename, sep = ""))
     }
   }
+  
+  now = Sys.time()
+  diff_time_start = round(difftime(now, time_start, units = "mins"), 2)
+  diff_time_last = round(difftime(now, time_last, units = "mins"), 2)
+  clock_time = format(Sys.time(), "%H:%M:%S")
+  cat("\n\n",
+      "##############################\n",
+      "END OF GIBBS SAMPLER\n",
+      "Total exe time: ", diff_time_start, " mins \n  ",
+      "##############################\n",
+      sep = "")
   
   out = list(input = list(Y = Y, m = m,
                           par = list(par_likelihood = par_likelihood,
                                      par_tRPM = par_tRPM),
                           ctr = list(ctr_mcmc = ctr_mcmc,
                                      ctr_save = ctr_save)),
-             output = list(C = C, alpha = alpha))
+             output = list(C = C, alpha = alpha),
+             execution_time = diff_time_start)
   
   if (ctr_save$save) {
     if (!dir.exists(ctr_save$filepath)) {
