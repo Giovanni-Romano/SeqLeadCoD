@@ -9,8 +9,7 @@ Rcpp::sourceCpp('src/cpp_utils.cpp')
 Rcpp::sourceCpp('src/ArgientoPaci/code/gibbs_utility.cpp')
 Rcpp::sourceCpp('src/ArgientoPaci/code/hyperg2.cpp')
 
-ghe = readRDS("data/rds/dataGHE.RDS") %>% 
-  filter(Year %in% 2000:2005) %>% 
+ghe = readRDS("data/rds/dataGHE.RDS") %>%
   unite("ID", c(CountryN, Sex), remove = FALSE)
 ghe.lab = unique(ghe %>% select(c("Age", "CauseS"))) %>% 
   group_by(Age) %>% 
@@ -30,13 +29,38 @@ p = dim(ghe.array)[2]
 u = rep(4, p)
 v = rep(0.25, p)
 
-eta = 0.38#seq(0.3, 0.5, by = 0.05)
-exp_ncl = sapply(eta, function(e) {
+# {
+#   val = cbind(m, u, v)
+#   nsig = 10^4
+#   S  = apply(val, 1, function(x) rhyper_sig2(n = nsig, c = x[2], d = x[3], m = x[1]), simplify = T)
+#   
+#   Gmax <- 1 - 1 / m
+#   
+#   gini_values = {
+#     expS = (exp(2 / S) + (matrix(rep(m - 1, each = nrow(S)), ncol = length(m)))) /
+#       (exp(1 / S) + (matrix(rep(m - 1, each = nrow(S)), ncol = length(m))))^2
+#     expS[S < 0.01] = 1
+#     gini_values = t( (1 - t(expS)) / Gmax )
+#   }
+#   
+#   par(mfrow = c(4, 5))
+#   for (j in 1:ncol(gini_values)){
+#     hist(gini_values[ , j], freq = F, breaks = 21, main = paste0("N-Gini, v=", u[j], ", w=", v[j], ", m=", m[j]),
+#          xlab = "Gini values", ylab = "Density", col = "lightblue", border = "black")
+#   }
+# }
+
+eta_values = seq(0.3, 0.45, by = 0.01)
+exp_ncl = sapply(eta_values, function(e) {
   probs_gnedin = HGnedin(n, 1:n, gamma = e)
   round(sum(1:n*probs_gnedin))
 })
-cbind(gamma = eta, exp_ncl = exp_ncl)
-
+cbind(gamma = eta_values, exp_ncl = exp_ncl)
+eta = 0.405
+{
+  probs_gnedin = HGnedin(n, 1:n, gamma = eta)
+  cat("prior expected ncl with eta ", eta, " is ", round(sum(1:n*probs_gnedin)), sep = "")
+}
 
 seedrun = 20148
 nburn = 2000
