@@ -55,7 +55,7 @@ out = tHMM_gibbs(
                   eta = eta # Gnedin parameter
   ),
   # Control parameters for MCMC settings
-  ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, verbose = "2"),
+  ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, verbose = "1"),
   # Control parameters for result storing
   ctr_save = list(save = TRUE, filepath = "output/tHMM/",
                   filename = paste("res_", seedrun, ".RDS", sep = ""))

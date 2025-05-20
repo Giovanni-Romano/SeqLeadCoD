@@ -91,8 +91,11 @@ tHMM_gibbs = function(
       sep = "")
   
   # Gibbs sampling loop
+  
+  # Start loop in d ----
   for (d in 1:niter) {
-    for (t in 1:.T) { # Loop in t ----
+    # Start loop in t ----
+    for (t in 1:.T) {
       
       Y_t = Y[ , , t]
       
@@ -112,10 +115,11 @@ tHMM_gibbs = function(
         }
       }
       
-      # Shuffle order update gammass
+      # Shuffle order update gammas
       visited.gamma = c()
       tovisit.gamma = sample(1:n, n, replace = FALSE)
       
+      # Start loop in j.gamma ----
       for (j.gamma in 1:n) {
         # Select the next node to visit
         i = tovisit.gamma[1]
@@ -142,10 +146,12 @@ tHMM_gibbs = function(
                                          C_tm1 = C.tmp[[t - 1]],
                                          eta = eta)
         }
-      }
-      if (verbose == 2) {
+      } 
+      # End loop in j.gamma ----
+      
+      if (verbose > 0) {
         if (d %% print_step == 0) {
-          cat("\r", 
+          cat(ifelse(verbose == 2, "\r", "\n"),
               sprintf("  update: gammas  done! (%3d gamma=1)%-20s",
                       sum(gamma.tmp[, t]),
                       ""),
@@ -165,7 +171,7 @@ tHMM_gibbs = function(
       visited.labels = c()
       tovisit.labels = sample(1:n, n, replace = FALSE)
       
-      
+      # Start loop in j.lab ----
       for (j.lab in 1:n) {
         # Select the next node to visit
         i = tovisit.labels[1]
@@ -200,10 +206,11 @@ tHMM_gibbs = function(
         mu.tmp[[t]] = out_uplab$center
         sigma.tmp[[t]] = out_uplab$scale
       }
+      # End loop in j.lab ----
       
-      if (verbose == 2) {
+      if (verbose > 0) {
         if (d %% print_step == 0) {
-          cat("\r", 
+          cat(ifelse(verbose == 2, "\r", "\n"), 
               sprintf("  update: labels  done! (ncl: %3d, sing: %3d)%-20s",
                       ncol(C.tmp[[t]]),
                       sum(colSums(C.tmp[[t]]) == 1),
@@ -220,6 +227,7 @@ tHMM_gibbs = function(
       }
       ncluster = ncol(C.tmp[[t]])
       
+      # Start loop in h ----
       for (h in 1:ncluster){
         if (verbose == 2) {
           if (d %% print_step == 0) {
@@ -254,10 +262,11 @@ tHMM_gibbs = function(
                                              m = m[j])
         }
       }
+      # End loop in h ----  
       
-      if (verbose == 2) {
+      if (verbose > 0) {
         if (d %% print_step == 0) {
-          cat("\r", 
+          cat(ifelse(verbose == 2, "\r", "\n"),
               sprintf(" update: parameters  done!%-20s",
                       "")
           )
@@ -275,15 +284,17 @@ tHMM_gibbs = function(
                                     pr_shape1 = a_alpha,
                                     pr_shape2 = b_alpha)
       }
-      if (verbose == 2) {
+      if (verbose > 0) {
         if (d %% print_step == 0) {
-          cat("\r", "  update: alpha  done!")
+          cat(ifelse(verbose == 2, "\r", "\n"),
+              "  update: alpha  done!")
         }
       }
       # Store the results
-      C[ , t, d] = mat2vec(C.tmp[[.T]])
+      C[ , t, d] = mat2vec(C.tmp[[t]])
       alpha[t, d] = alpha.tmp[t]
     }
+    # End loop in t ----
     
     if (verbose > 0) {
       if (d %% print_step == 0) {
@@ -331,8 +342,9 @@ tHMM_gibbs = function(
                  output = list(C = C, alpha = alpha),
                  execution_time = diff_time_start)
       saveRDS(out, paste(ctr_save$filepath, ctr_save$filename, sep = ""))
+      rm(out); gc()
     }
-  }
+  } # End loop in d ----
   
   now = Sys.time()
   diff_time_start = round(difftime(now, time_start, units = "mins"), 2)
