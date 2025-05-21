@@ -132,7 +132,7 @@ update_label = function(i,
   # }
   
   # Log-prior of old and new clusters
-  log_pr = log(urn_GN(n_mi, eta))
+  log_pr = log(urn(n_mi, eta))
   
   # Compatibility checks
   comp_checks = compatibility_check_cppwrapper(i = i, H = H, gamma_tp1 = gamma_tp1,

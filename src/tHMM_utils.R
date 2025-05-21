@@ -184,19 +184,36 @@ dhamming.multicluster = function(x, mu, sigma, m, logscale = FALSE){
   return(out)
 }
 
-urn_GN <- function(sizecl, eta){
+urn_GN <- function(sizecl, gamma){
   # sizecl: vector of length H (nmbr of existing clusters) with cluster sizes
-  # eta: Gnedin parameter
+  # gamma: Gnedin parameter
   
   H = length(sizecl)
-  oldcl = (sizecl+1)*(sum(sizecl)-H+eta)
-  newcl = H^2-H*eta
+  oldcl = (sizecl+1)*(sum(sizecl)-H+gamma)
+  newcl = H^2-H*gamma
   out = c(oldcl, newcl)
   
   return(out)
+}
+
+urn_DP <- function(sizecl, M){
+  return(c(sizecl, M))
 }
 
 # Probability of having h (occupied) clusters given n observations assuming Gnedin
 HGnedin <- function(n, h, gamma=0.5){
   exp(lchoose(n, h) + lgamma(h-gamma) - lgamma(1-gamma) + log(gamma) + lgamma(n+ gamma - h) - lgamma(n +gamma))
 }
+
+# Expected number of clusters DP
+E_Nclusters_DP <- function(n, M){
+  # n: number of observations
+  # M: concentration parameter
+  
+  if (M == 0){
+    return(0)
+  } else {
+    return(sum(M / (M + 1:n - 1)))
+  }
+}
+

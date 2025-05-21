@@ -55,17 +55,18 @@ exp_ncl = sapply(eta_values, function(e) {
   probs_gnedin = HGnedin(n, 1:n, gamma = e)
   round(sum(1:n*probs_gnedin))
 })
-cbind(gamma = eta_values, exp_ncl = exp_ncl)
+cbind(eta = eta_values, exp_ncl = exp_ncl)
 eta = 0.405
 {
   probs_gnedin = HGnedin(n, 1:n, gamma = eta)
-  cat("prior expected ncl with eta ", eta, " is ", round(sum(1:n*probs_gnedin)), sep = "")
+  cat("prior expected ncl with eta ", eta, " is ", round(sum(1:n*probs_gnedin), 2), "\n", sep = "")
 }
 
 seedrun = 20148
-nburn = 2000
-nchain = 10000
-printstep = 250
+nburn = 15000
+nchain = 15000
+printstep = 500
+urntype = "Gnedin"
 
 out = tHMM_gibbs(
   Y = ghe.array,
@@ -76,11 +77,12 @@ out = tHMM_gibbs(
   ),
   # Parameters for the tRPM process prior
   par_tRPM = list(a_alpha = 1, b_alpha = 1, # Beta prior on alpha
+                  urn_type = urntype, # Type of urn process
                   eta = eta # Gnedin parameter
   ),
   # Control parameters for MCMC settings
   ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, verbose = "1"),
   # Control parameters for result storing
   ctr_save = list(save = TRUE, filepath = "output/tHMM/",
-                  filename = paste("res_", seedrun, ".RDS", sep = ""))
+                  filename = paste("res_", urntype, seedrun, ".RDS", sep = ""))
 )

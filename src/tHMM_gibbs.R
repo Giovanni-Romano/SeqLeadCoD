@@ -7,7 +7,8 @@ tHMM_gibbs = function(
     ),
     # Parameters for the tRPM process prior
     par_tRPM = list(a_alpha = 1, b_alpha = 1, # Beta prior on alpha
-                    eta = 1 # Gnedin parameter
+                    urn_type = c("Gnedin", "DP"), 
+                    eta = 1 # Gnedin/DP parameter
     ),
     # Control parameters for MCMC settings
     ctr_mcmc = list(seed = 1234, nburnin = 1000, nchain = 5000, print_step = 100, verbose = "0"),
@@ -53,6 +54,13 @@ tHMM_gibbs = function(
   eta = par_tRPM$eta
   a_alpha = par_tRPM$a_alpha
   b_alpha = par_tRPM$b_alpha
+  
+  # Set the urn
+  urn_type = match.arg(par_tRPM$urn_type)
+  urn = switch(urn_type,
+               "Gnedin" = urn_GN,
+               "DP" = urn_DP,
+               stop("Invalid urn_type"))
   
   # Initialize data storage
   C = array(NA_integer_, dim = c(n, .T, niter))
