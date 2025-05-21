@@ -70,7 +70,8 @@ update_label = function(i,
                         sigma,
                         m,
                         u,
-                        v){
+                        v,
+                        urn){
   
   ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
   ### - i: index of unit whose label is under update

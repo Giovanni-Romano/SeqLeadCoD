@@ -56,7 +56,7 @@ tHMM_gibbs = function(
   b_alpha = par_tRPM$b_alpha
   
   # Set the urn
-  urn_type = match.arg(par_tRPM$urn_type)
+  urn_type = par_tRPM$urn_type
   urn = switch(urn_type,
                "Gnedin" = urn_GN,
                "DP" = urn_DP,
@@ -208,7 +208,8 @@ tHMM_gibbs = function(
                                  sigma = sigma.tmp[[t]], 
                                  m = m,
                                  u = u,
-                                 v = v)
+                                 v = v,
+                                 urn = urn)
         
         C.tmp[[t]] = out_uplab$lab
         mu.tmp[[t]] = out_uplab$center
