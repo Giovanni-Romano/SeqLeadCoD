@@ -5,6 +5,7 @@ tHMM_gibbs = function(
     par_likelihood = list(u = NULL, # First hyperparam HIG
                           v = NULL # Second hyperparam HIG
     ),
+    fix_alpha.flag = FALSE, fix_alpha.value = 0.01,
     # Parameters for the tRPM process prior
     par_tRPM = list(a_alpha = 1, b_alpha = 1, # Beta prior on alpha
                     urn_type = c("Gnedin", "DP"), 
@@ -289,9 +290,13 @@ tHMM_gibbs = function(
         }
       }
       if (t > 1) {
-        alpha.tmp[t] = update_alpha(gamma_t = gamma.tmp[, t],
-                                    pr_shape1 = a_alpha,
-                                    pr_shape2 = b_alpha)
+        if (!fix_alpha.flag){
+          alpha.tmp[t] = update_alpha(gamma_t = gamma.tmp[, t],
+                                      pr_shape1 = a_alpha,
+                                      pr_shape2 = b_alpha)
+        } else {
+          alpha.tmp[t] = fix_alpha.value
+        }
       }
       if (verbose > 0) {
         if (d %% print_step == 0) {
