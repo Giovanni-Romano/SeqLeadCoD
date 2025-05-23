@@ -188,6 +188,13 @@
       ],
       "Hash": "b11ac45c916608b7d1374ff87da053d5"
     },
+    "HDInterval": {
+      "Package": "HDInterval",
+      "Version": "0.2.4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "b5b77433b286dd869ff33ee7fd5c545f"
+    },
     "KernSmooth": {
       "Package": "KernSmooth",
       "Version": "2.23-21",
