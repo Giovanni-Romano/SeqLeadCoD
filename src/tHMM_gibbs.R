@@ -5,17 +5,19 @@ tHMM_gibbs = function(
     par_likelihood = list(u = NULL, # First hyperparam HIG
                           v = NULL # Second hyperparam HIG
     ),
-    fix_alpha.flag = FALSE, fix_alpha.value = 0.01,
     # Parameters for the tRPM process prior
     par_tRPM = list(a_alpha = 1, b_alpha = 1, # Beta prior on alpha
                     urn_type = c("Gnedin", "DP"), 
                     eta = 1 # Gnedin/DP parameter
     ),
     # Control parameters for MCMC settings
-    ctr_mcmc = list(seed = 1234, nburnin = 1000, nchain = 5000, print_step = 100, verbose = "0"),
+    ctr_mcmc = list(seed = 1234, nburnin = 1000, nchain = 5000, print_step = 100, 
+                    ncl.init = NULL, verbose = "0"),
     # Control parameters for result storing
     ctr_save = list(save = FALSE, filepath = "",
-                    filename = paste("res_", Sys.Date(), ".RDS", sep = ""))
+                    filename = paste("res_", Sys.Date(), ".RDS", sep = "")),
+    # Control parameters for managing of alpha parameters
+    ctr_alpha = list(fix_alpha.flag = FALSE, fix_alpha.value = NULL)
 ) {
   
   if (ctr_save$save) {
@@ -26,10 +28,25 @@ tHMM_gibbs = function(
     cat("##############################\n", "Saving out in RDS at path: ", paste0(ctr_save$filepath, ctr_save$filename, sep = ""), "\n", sep = "")
   }
   
+  # Set the data dimensions
+  dims = dim(Y)
+  n = dims[1]
+  p = dims[2]
+  .T = dims[3]
+  m.inner = apply(Y, 2, function(x) length(unique(c(x)))) %>% unname()
+  if (any(m != m.inner)){stop("Provided m is not consistent with Y!")}
+  attrlist = lapply(m, function(x) 1:x)
   
   # Set and check the control parameters
   ctr_mcmc = do.call("set_ctr_mcmc", ctr_mcmc)
   ctr_save = do.call("set_ctr_save", ctr_save)
+  ctr_alpha = do.call("set_ctr_alpha", ctr_alpha)
+  
+  # Extract ctr_alpha
+  fix_alpha.flag = ctr_alpha$fix_alpha.flag
+  fix_alpha.value = ifelse(ctr_alpha$fix_alpha.value, 
+                            ctr_alpha$fix_alpha.value, 
+                            NA)
   
   verbose = ctr_mcmc$verbose
   print_step = ctr_mcmc$print_step
@@ -39,15 +56,6 @@ tHMM_gibbs = function(
   
   # Set the number of iterations and swaps
   niter = ctr_mcmc$nburnin + ctr_mcmc$nchain
-  
-  # Set the data dimensions
-  dims = dim(Y)
-  n = dims[1]
-  p = dims[2]
-  .T = dims[3]
-  m.inner = apply(Y, 2, function(x) length(unique(c(x)))) %>% unname()
-  if (any(m != m.inner)){stop("Provided m is not consistent with Y!")}
-  attrlist = lapply(m, function(x) 1:x)
   
   # Extract hyperparameters
   u = par_likelihood$u
@@ -66,17 +74,24 @@ tHMM_gibbs = function(
   # Initialize data storage
   C = array(NA_integer_, dim = c(n, .T, niter))
   alpha = array(NA_real_, dim = c(.T, niter))
+  gamma = array(NA_real_, dim = c(.T, niter))
   
   
   # Initial values
-  ncl.init = n
-  C.init = matrix(1:ncl.init, nrow = ncl.init, ncol = .T)
-  # mu.init = replicate(.T, sapply(m, function(attrsize){
-  #   sample(1:attrsize, ncl.init, replace = TRUE)
-  # }), simplify = FALSE)
-  mu.init = apply(Y, 3, function(x) x, simplify = F)
+  ncl.init = ctr_mcmc$ncl.init
+  C.initmp = sample(1:ncl.init, n, TRUE)
+  C.initmp = match(C.initmp, sort(unique(C.initmp))) 
+  C.init = matrix(C.initmp, nrow = n, ncol = .T)
+  # mu.init = apply(Y, 3, function(x) x, simplify = F)
+  mu.init = replicate(.T, matrix(NA, nrow = ncl.init, ncol = p), simplify = F)
+  for (t in 1:.T){
+    for (h in 1:ncl.init){
+      for (j in 1:p)
+      mu.init[[t]][h, p] = sample(1:m[j], 1)
+    }
+  }
   sigma.init = replicate(.T, matrix(1, nrow = ncl.init, ncol = p), simplify = FALSE)
-  alpha.init = rep(0.5, .T)
+  alpha.init = rep(0.01, .T)
   alpha.init[1] = NA
   gamma.init = matrix(0, nrow = n, ncol = .T+1)
   
@@ -304,9 +319,11 @@ tHMM_gibbs = function(
               "  update: alpha  done!")
         }
       }
+      
       # Store the results
       C[ , t, d] = mat2vec(C.tmp[[t]])
       alpha[t, d] = alpha.tmp[t]
+      gamma[t, d] = mean(gamma.tmp[ , t])
     }
     # End loop in t ----
     
@@ -338,7 +355,8 @@ tHMM_gibbs = function(
                               par = list(par_likelihood = par_likelihood,
                                          par_tRPM = par_tRPM),
                               ctr = list(ctr_mcmc = ctr_mcmc,
-                                         ctr_save = ctr_save)),
+                                         ctr_save = ctr_save,
+                                         ctr_alpha = ctr_alpha)),
                  output = list(C = C[ , , 1:d], alpha = alpha[ , 1:d]),
                  execution_time = diff_time_start)
       
@@ -352,7 +370,8 @@ tHMM_gibbs = function(
                               par = list(par_likelihood = par_likelihood,
                                          par_tRPM = par_tRPM),
                               ctr = list(ctr_mcmc = ctr_mcmc,
-                                         ctr_save = ctr_save)),
+                                         ctr_save = ctr_save,
+                                         ctr_alpha = ctr_alpha)),
                  output = list(C = C, alpha = alpha),
                  execution_time = diff_time_start)
       saveRDS(out, paste(ctr_save$filepath, ctr_save$filename, sep = ""))
@@ -375,7 +394,8 @@ tHMM_gibbs = function(
                           par = list(par_likelihood = par_likelihood,
                                      par_tRPM = par_tRPM),
                           ctr = list(ctr_mcmc = ctr_mcmc,
-                                     ctr_save = ctr_save)),
+                                     ctr_save = ctr_save,
+                                     ctr_alpha = ctr_alpha)),
              output = list(C = C, alpha = alpha),
              execution_time = diff_time_start)
   
@@ -386,4 +406,6 @@ tHMM_gibbs = function(
     cat("Saving out in RDS at path: ", paste0(ctr_save$filepath, ctr_save$filename, sep = ""), "\n")
     saveRDS(out, paste(ctr_save$filepath, ctr_save$filename, sep = ""))
   }
+  
+  return(out)
 }

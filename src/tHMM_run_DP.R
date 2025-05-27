@@ -59,10 +59,11 @@ eta = 7.5
   cat("prior expected ncl with eta ", eta, " is ", round(E_ncl, 2), "\n", sep = "")
 }
 
-seedrun = 20146
+seedrun = 20019
 nburn = 15000
 nchain = 15000
 printstep = 500
+nclinit = 100
 urntype = "DP"
 
 out = tHMM_gibbs(
@@ -74,12 +75,14 @@ out = tHMM_gibbs(
   ),
   # Parameters for the tRPM process prior
   par_tRPM = list(a_alpha = 1, b_alpha = 1, # Beta prior on alpha
-                  urn_type = urntype,
+                  urn_type = urntype, # Type of urn process
                   eta = eta # DP parameter
   ),
   # Control parameters for MCMC settings
-  ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, verbose = "1"),
+  ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, 
+                  ncl.init = nclinit, verbose = "1"),
   # Control parameters for result storing
   ctr_save = list(save = TRUE, filepath = "output/tHMM/",
-                  filename = paste("res_", urntype, seedrun, ".RDS", sep = ""))
+                  filename = paste("res_", urntype, seedrun, ".RDS", sep = "")),
+  ctr_alpha = list(fix_alpha.flag = FALSE)
 )

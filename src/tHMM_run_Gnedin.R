@@ -56,16 +56,17 @@ exp_ncl = sapply(eta_values, function(e) {
   round(sum(1:n*probs_gnedin))
 })
 cbind(eta = eta_values, exp_ncl = exp_ncl)
-eta = 0.405
+eta = 0.4
 {
   probs_gnedin = HGnedin(n, 1:n, gamma = eta)
   cat("prior expected ncl with eta ", eta, " is ", round(sum(1:n*probs_gnedin), 2), "\n", sep = "")
 }
 
-seedrun = 20148
+seedrun = 20019
 nburn = 15000
 nchain = 15000
 printstep = 500
+nclinit = 100
 urntype = "Gnedin"
 
 out = tHMM_gibbs(
@@ -81,8 +82,10 @@ out = tHMM_gibbs(
                   eta = eta # Gnedin parameter
   ),
   # Control parameters for MCMC settings
-  ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, verbose = "1"),
+  ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, 
+                  ncl.init = nclinit, verbose = "1"),
   # Control parameters for result storing
   ctr_save = list(save = TRUE, filepath = "output/tHMM/",
-                  filename = paste("res_", urntype, seedrun, ".RDS", sep = ""))
+                  filename = paste("res_", urntype, seedrun, ".RDS", sep = "")),
+  ctr_alpha = list(fix_alpha.flag = FALSE)
 )

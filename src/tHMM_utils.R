@@ -109,18 +109,20 @@ mat2vec <- function(clust_matrix){
 
 # Setting of control objects ----
 set_ctr_mcmc = function(
-    seed = 1234, nburnin = 1000, nchain = 5000, print_step = 100, 
+    seed = 1234, nburnin = 1000, nchain = 5000, print_step = 100, ncl.init = NULL,
     verbose = c("0", "1", "2")
 ){
   stopifnot(is.numeric(seed))
   stopifnot(is.numeric(nburnin) & nburnin >= 0)
   stopifnot(is.numeric(nchain) & nchain >= 1)
   stopifnot(is.numeric(print_step) & print_step >= 1)
+  stopifnot(is.numeric(ncl.init) & ncl.init >= 1 & ncl.init <= n)
   
   verbose = match.arg(verbose)
   
   list(seed = floor(seed), nburnin = floor(nburnin), nchain = floor(nchain), 
-       print_step = floor(print_step), verbose = as.integer(verbose))
+       print_step = floor(print_step), ncl.init = floor(ncl.init),
+       verbose = as.integer(verbose))
 }
 
 set_ctr_save = function(
@@ -132,6 +134,16 @@ set_ctr_save = function(
   stopifnot(is.character(filename))
   
   list(save = save, filepath = filepath, filename = filename)
+}
+
+
+set_ctr_alpha = function(
+    fix_alpha.flag = FALSE, fix_alpha.value = NULL
+){
+  stopifnot(is.logical(fix_alpha.flag))
+  stopifnot(fix_alpha.flag & is.numeric(fix_alpha.value) & (fix_alpha.value > 0 & fix_alpha.value < 1))
+  
+  list(fix_alpha.flag = fix_alpha.flag, fix_alpha.value = fix_alpha.value)
 }
 
 
@@ -203,6 +215,12 @@ urn_DP <- function(sizecl, M){
 # Probability of having h (occupied) clusters given n observations assuming Gnedin
 HGnedin <- function(n, h, gamma=0.5){
   exp(lchoose(n, h) + lgamma(h-gamma) - lgamma(1-gamma) + log(gamma) + lgamma(n+ gamma - h) - lgamma(n +gamma))
+}
+
+HbarGnedin <- function(h, gamma=0.5){
+  lpoch = lgamma(1 - gamma + h - 1) - lgamma(1-gamma)
+  logout = log(gamma) + lpoch - lfactorial(h) 
+  exp(logout)
 }
 
 # Expected number of clusters DP
