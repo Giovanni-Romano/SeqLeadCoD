@@ -10,7 +10,7 @@ suppressPackageStartupMessages(
   }
 )
 
-cmndargs = commandArgs(trailingOnly = TRUE)
+cmndargs = c("GnedinFixAlpha", 20148) #commandArgs(trailingOnly = TRUE)
 
 # Load objects ----
 TYPE = cmndargs[1] #"Gnedin"
@@ -39,8 +39,7 @@ nburnin = RDS$input$ctr$ctr_mcmc$nburnin
 
 # Show/Save flags ----
 SHOW = TRUE
-SAVE = TRUE
-COMPUTEPSM = COMPUTEPPE = FALSE
+SAVE = FALSE
 if (SAVE){
   IMGFOLDER = paste0("img/tHMM/", NAME, "/")
   if (!dir.exists(IMGFOLDER)){
@@ -61,7 +60,7 @@ plt_trcncl = ncl_trace %>% melt(value.name = "ncl") %>%
   ggplot(aes(x = iteration, y = ncl)) +
   geom_line() +
   geom_vline(xintercept = nburnin, linetype = "dashed", color = "red") +
-  scale_x_continuous(breaks = c(101, 5000, 10000, 15000, 20000)) +
+  scale_x_continuous(breaks = c(101, seq(5000, niter, by = 5000))) +
   facet_wrap(~ year) +
   labs(x = "Iteration", y = "Number of clusters")
 
@@ -190,30 +189,8 @@ if (SAVE) {
 }
 
 # Probability of coclustering and PPE ----
-if (COMPUTEPSM){
-  PSM = apply(C[ , , -(1:nburnin)], 2, function(x) comp.psm(t(x)), simplify = FALSE)
-  PSM = lapply(PSM, function(x){
-    dimnames(x) = list("ID1" = IDs, "ID2" = IDs)
-    x
-  })
-  names(PSM) = years
-  saveRDS(PSM, file = paste0("output/tHMM/PSM_", NAME, ".RDS"))
-} else {
-  PSM = readRDS("output/tHMM/PSM_20148.RDS")
-}
-if (COMPUTEPPE){
-  PPE = list()
-  for (y in 1:nyears){
-    cat(y, "\t")
-    PPE[[y]] = salso(C[ , y, -(1:nburnin)] %>% t)
-    gc()
-  }
-  saveRDS(PPE, file = paste0("output/tHMM/salso_", RDS$input$ctr$ctr_mcmc$seed, ".RDS"))
-} else {
-  PPE = readRDS("output/tHMM/salso_20148.RDS") %>% do.call(cbind, .)
-}
-dimnames(PPE) = list("ID" = IDs, "year" = years)
-
+PSM = readRDS("output/tHMM/PSM_20148.RDS")
+PPE = readRDS("output/tHMM/salso_20148.RDS") %>% do.call(cbind, .)
 
 PPE.ncl = apply(PPE, 2, max)
 
