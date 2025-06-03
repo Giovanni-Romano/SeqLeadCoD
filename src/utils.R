@@ -96,3 +96,8 @@ seqsort = function(partition, reference = TRUE){
   }
   return(out)
 }
+
+moda = function(x){
+  tx = table(x)
+  return(as.numeric(dimnames(tx)$x[which.max(tx)]))
+}

@@ -137,6 +137,32 @@ set_ctr_save = function(
 }
 
 
+set_ctr_mcmc_par = function(
+    seed = 1234, nburnin = 1000, nchain = 5000, print_step = 100,
+    verbose = c("0", "1")
+){
+  stopifnot(is.numeric(seed))
+  stopifnot(is.numeric(nburnin) & nburnin >= 0)
+  stopifnot(is.numeric(nchain) & nchain >= 1)
+  stopifnot(is.numeric(print_step) & print_step >= 1)
+  
+  verbose = match.arg(verbose)
+  
+  list(seed = floor(seed), nburnin = floor(nburnin), nchain = floor(nchain), 
+       print_step = floor(print_step), verbose = as.integer(verbose))
+}
+
+set_ctr_save_par = function(
+    save = FALSE, filepath = "", 
+    filename = paste("par_", Sys.Date(), ".RDS", sep = "")
+){
+  stopifnot(is.logical(save))
+  stopifnot(is.character(filepath))
+  stopifnot(is.character(filename))
+  
+  list(save = save, filepath = filepath, filename = filename)
+}
+
 set_ctr_alpha = function(
     fix_alpha.flag = FALSE, fix_alpha.value = NULL
 ){

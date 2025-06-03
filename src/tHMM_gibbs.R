@@ -45,8 +45,8 @@ tHMM_gibbs = function(
   # Extract ctr_alpha
   fix_alpha.flag = ctr_alpha$fix_alpha.flag
   fix_alpha.value = ifelse(ctr_alpha$fix_alpha.value, 
-                            ctr_alpha$fix_alpha.value, 
-                            NA)
+                           ctr_alpha$fix_alpha.value, 
+                           NA)
   
   verbose = ctr_mcmc$verbose
   print_step = ctr_mcmc$print_step
@@ -87,7 +87,7 @@ tHMM_gibbs = function(
   for (t in 1:.T){
     for (h in 1:ncl.init){
       for (j in 1:p)
-      mu.init[[t]][h, p] = sample(1:m[j], 1)
+        mu.init[[t]][h, p] = sample(1:m[j], 1)
     }
   }
   sigma.init = replicate(.T, matrix(1, nrow = ncl.init, ncol = p), simplify = FALSE)
@@ -408,4 +408,115 @@ tHMM_gibbs = function(
   }
   
   return(out)
+}
+
+
+tHMM_gibbs_parameters = function(
+    PPE, Y, m,
+    par_likelihood = list(u = NULL, # First hyperparam HIG
+                          v = NULL # Second hyperparam HIG
+    ),
+    ctr_mcmc = list(seed = 1234, nburnin = 1000, nchain = 5000, print_step = 100,
+                    verbose = "0"),
+    ctr_save = list(save = FALSE, filepath = "",
+                    filename = paste("par_", Sys.Date(), ".RDS", sep = ""))
+){
+  # Set the Y dimensions
+  dims = dim(Y)
+  n = dims[1]
+  p = dims[2]
+  .T = dims[3]
+  ncl = apply(PPE, 2, function(x) length(unique(c(x)))) %>% unname()
+  m.inner = apply(Y, 2, function(x) length(unique(c(x)))) %>% unname()
+  if (any(m != m.inner)){stop("Provided m is not consistent with Y!")}
+  attrlist = lapply(m, function(x) 1:x)
+  
+  # Set and check the control parameters
+  ctr_mcmc = do.call("set_ctr_mcmc_par", ctr_mcmc)
+  ctr_save = do.call("set_ctr_save_par", ctr_save)
+  niter = ctr_mcmc$nchain + ctr_mcmc$nburnin
+  
+  # Extract hyperparameters
+  u = par_likelihood$u
+  v = par_likelihood$v
+  
+  # Initialize data storage
+  mu = list()
+  sigma = list()
+  mu.tmp = list()
+  sigma.tmp = list()
+  
+  for (t in 1:.T) {
+    mu[[t]] = sigma[[t]] = array(NA, dim = c(ncl[t], p, niter))
+    mu.tmp[[t]] = sigma.tmp[[t]] = array(NA, dim = c(ncl[t], p))
+    
+    for (h in 1:ncl[t]){
+      for (j in 1:p){
+        mu.tmp[[t]][h, j] = sample(1:m[j], 1)
+        sigma.tmp[[t]][h, j] = 1
+      }
+    }
+  }
+  
+  time_start = time_last = Sys.time()
+  
+  # Gibbs sampling loop
+  for (iter in 1:niter) {
+    for (t in 1:.T){
+      
+      Y_t = Y[ , , t]
+      ncluster = ncl[t]
+      
+      for (h in 1:ncluster){
+        
+        idx_h = PPE[ , t] == h
+        Y_th = Y_t[idx_h, , drop = FALSE]
+        
+        prob.tmp = Center_prob(data = Y_th,
+                               sigma = sigma.tmp[[t]][h,],
+                               attrisize = m)
+        
+        mu.tmp[[t]][h,] = Samp_Center(center_prob = prob.tmp,
+                                      attriList = attrlist, p = p)
+        
+        size_h = sum(idx_h)
+        
+        for (j in 1:p) {
+          
+          dd = sum(Y_t[h , j] != mu.tmp[[t]][h, j])
+          cc = size_h - dd
+          
+          sigma.tmp[[t]][h, j] = rhyper_sig2(n = 1,
+                                             d = v[j]+dd,
+                                             c = u[j]+cc,
+                                             m = m[j])
+        }
+      }
+      
+      mu[[t]][ , , iter] = mu.tmp[[t]]
+      sigma[[t]][ , , iter] = sigma.tmp[[t]]
+    }
+    
+    if (ctr_mcmc$verbose > 0 && iter %% ctr_mcmc$print_step == 0) {
+      now = Sys.time()
+      diff_time_start = round(difftime(now, time_start, units = "mins"), 2)
+      diff_time_last = round(difftime(now, time_last, units = "mins"), 2)
+      clock_time = format(Sys.time(), "%H:%M:%S")
+      cat("\n\n",
+          "##############################\n",
+          "total exe time: ", diff_time_start, " mins \n  ",
+          "last ", ctr_mcmc$print_step, " iter time: ", diff_time_last, " mins \n  ", 
+          "print clock time: ", clock_time, "\n", 
+          "##############################\n",
+          sep = "")
+      time_last = now
+    }
+  }
+  
+  if (ctr_save$save){
+    saveRDS(list(mu = mu, sigma = sigma), 
+            file.path(ctr_save$filepath, paste0(ctr_save$filename, "_iter_", iter, ".RDS")))
+  }
+  
+  return(list(mu = mu, sigma = sigma))
 }
