@@ -278,7 +278,7 @@ tHMM_gibbs = function(
         
         for (j in 1:p) {
           
-          dd = sum(Y_t[h , j] != mu.tmp[[t]][h, j])
+          dd = sum(Y_t[idx_h , j] != mu.tmp[[t]][h, j])
           cc = size_h - dd
           
           sigma.tmp[[t]][h, j] = rhyper_sig2(n = 1,
@@ -483,7 +483,7 @@ tHMM_gibbs_parameters = function(
         
         for (j in 1:p) {
           
-          dd = sum(Y_t[h , j] != mu.tmp[[t]][h, j])
+          dd = sum(Y_t[idx_h, j] != mu.tmp[[t]][h, j])
           cc = size_h - dd
           
           sigma.tmp[[t]][h, j] = rhyper_sig2(n = 1,
@@ -515,7 +515,7 @@ tHMM_gibbs_parameters = function(
   
   if (ctr_save$save){
     saveRDS(list(mu = mu, sigma = sigma), 
-            file.path(ctr_save$filepath, paste0(ctr_save$filename, "_iter_", iter, ".RDS")))
+            file.path(ctr_save$filepath, paste0(ctr_save$filename, ".RDS")))
   }
   
   return(list(mu = mu, sigma = sigma))
