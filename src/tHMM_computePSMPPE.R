@@ -54,5 +54,6 @@ for (y in 1:nyears){
   PPE[[y]] = salso(C[ , y, -(1:nburnin)] %>% t)
   gc()
 }
+PPE = do.call(cbind, PPE)
 dimnames(PPE) = list("ID" = IDs, "year" = years)
-saveRDS(PPE, file = paste0("output/tHMM/salso_", RDS$input$ctr$ctr_mcmc$seed, ".RDS"))
+saveRDS(PPE, file = paste0("output/tHMM/ppe_", RDS$input$ctr$ctr_mcmc$seed, ".RDS"))
