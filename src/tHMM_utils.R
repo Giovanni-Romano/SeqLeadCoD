@@ -261,3 +261,218 @@ E_Nclusters_DP <- function(n, M){
   }
 }
 
+
+# Simulate data for simstudy ----
+simdata = function(seed){
+  set.seed(seed)
+  
+  # Dimensions
+  n = 100
+  p = 5
+  nT = 8
+  ncl = 6
+  list_values = list(list(c(1, 2), c(2, 3, 5, 7), c(3, 4, 5, 7), c(3, 4, 5, 6), c(4, 6)),
+                     list(c(1, 2), c(2, 3, 5, 7), c(3, 4, 5, 7), c(3, 4, 5, 6), c(4, 6)),
+                     list(c(1, 2), c(2, 3, 5, 7), c(3, 4, 5, 7), c(3, 4, 5, 6), c(4, 6)),
+                     list(c(1, 2), c(2, 3, 5, 7), c(3, 4, 5, 7), c(3, 4, 5, 6), c(4, 6)),
+                     list(c(1, 2, 9), c(2, 3, 5, 7, 8, 9), c(3, 4, 5, 7, 8, 9), c(3, 4, 5, 6, 8, 9), c(4, 6, 9)),
+                     list(c(1, 2), c(2, 3, 5, 7, 8), c(3, 4, 5, 7, 8), c(3, 4, 5, 6, 8), c(4, 6)),
+                     list(c(1, 2), c(2, 3, 5, 7, 8, 10), c(3, 4, 5, 7, 8, 10), c(3, 4, 5, 6, 8, 10), c(4, 6, 10)),
+                     list(c(1, 2), c(2, 5, 7, 8, 10), c(3, 4, 5, 8, 10), c(3, 4, 5, 8, 10), c(4, 6, 10)))
+  
+  # Store objects
+  C = array(NA, dim = c(n, nT), dimnames = list("Subject" = 1:n, "Year" = 1:nT))
+  Theta = array(NA, dim = c(ncl, 5, 8), dimnames = list("Cluster" = 1:ncl, "Age" = 1:p, "Year" = 1:nT)) 
+  Y = array(NA, dim = c(n, p, nT), dimnames = list("Subject" = 1:n, "Age" = 1:p, "Year" = 1:nT))
+  to_move = list()
+  
+  # Time 1
+  C[ , 1] = c(rep(1, 30), rep(2, 15), rep(3, 25), rep(4, 10), rep(5, 5), rep(6, 15))
+  Theta[ , , 1] = matrix(c(1, 2, 3, 4, 4,
+                           2, 2, 3, 3, 4,
+                           2, 2, 5, 4, 6,
+                           1, 5, 5, 6, 6,
+                           1, 5, 3, 3, 6,
+                           1, 7, 3, 3, 4), 
+                         nrow = ncl, ncol = p, byrow = "T")
+  
+  # Time 2
+  Theta[ , , 2] = Theta[ , , 1]
+  # Theta[5, , 2] = c(1, 7, 3, 3, 6)
+  # Theta[2, 4, 2] = Theta[1, 4, 2] 
+  to_move[[2]] = list(sample(which(C[ , 1] == 2), 5, replace = FALSE),
+                      sample(which(C[ , 1] == 6), 5, replace = FALSE))
+  C[ , 2] = C[ , 1]
+  C[to_move[[2]][[1]], 2] = 1
+  C[to_move[[2]][[2]], 2] = 5
+  Y[ , , 2] = Theta[ , , 2][C[ , 2], ]
+  
+  # Time 3
+  Theta[ , , 3] = Theta[ , , 2]
+  Theta[2, 4, 3] = Theta[1, 4, 3] 
+  Theta[5, , 3] = c(1, 7, 3, 3, 6)
+  Theta[6, , 3] = NA
+  to_move[[3]] = list(which(C[ , 2] == 6),
+                      sample(which(C[ , 2] == 3), 5, replace = FALSE),
+                      sample(which(C[ , 2] == 2), 5, replace = FALSE))
+  C[ , 3] = C[ , 2]
+  C[to_move[[3]][[1]], 3] = 5
+  C[to_move[[3]][[2]], 3] = 4
+  C[to_move[[3]][[3]], 3] = 1
+  
+  # Time 4
+  Theta[ , , 4] = Theta[ , , 3]
+  Theta[3, 2, 4] = Theta[4, 2, 4]
+  Theta[2, , 4] = NA
+  Theta[5, 1, 4] = 2; Theta[5, 3, 4] = 5
+  C[ , 4] = C[ , 3]
+  to_move[[4]] = list(which(C[ , 3] == 2),
+                      sample(which(C[ , 2] == 3), 5, replace = FALSE))
+  C[to_move[[4]][[1]], 4] = 1
+  C[to_move[[4]][[2]], 4] = 4
+  
+  # Time 5
+  Theta[ , , 5] = Theta[ , , 4]
+  Theta[2, , 5] = c(1, 8, 8, 8, 4)
+  Theta[6, , 5] = c(9, 9, 9, 9, 9)
+  C[ , 5] = C[ , 4]
+  to_move[[5]] = list(sample(which(C[ , 4] == 3), 10, replace = FALSE),
+                      sample(which(C[ , 4] == 1), 10, replace = FALSE))
+  C[to_move[[5]][[1]][1:4], 5] = 6
+  C[to_move[[5]][[1]][5:10], 5] = 4
+  C[to_move[[5]][[2]], 5] = 2
+  
+  # Time 6
+  Theta[ , , 6] = Theta[ , , 5]
+  Theta[3, , 6] = NA
+  Theta[6, , 6] = NA
+  Theta[4, 1, 6] = 2
+  C[ , 6] = C[ , 5]
+  to_move[[6]] = list(c(which(C[ , 5] == 3), which(C[ , 5] == 6)),
+                      sample(which(C[ , 5] == 1), 10, replace = FALSE),
+                      sample(which(C[ , 5] == 4), 12, replace = FALSE))
+  C[to_move[[6]][[1]], 6] = 4
+  C[to_move[[6]][[2]], 6] = 2
+  C[to_move[[6]][[3]], 6] = 5
+  
+  # Time 7
+  Theta[ , , 7] = Theta[ , , 6]
+  Theta[1, 5, 7] = 10
+  Theta[2, 4:5, 7] = 10
+  Theta[4, 4:5, 7] = 10
+  Theta[5, 5, 7] = 10
+  
+  C[ , 7] = C[ , 6]
+  to_move[[7]] = list(sample(which(C[ , 6] == 4), 12, replace = FALSE),
+                      sample(which(C[ , 6] == 1), 10, replace = FALSE))
+  C[to_move[[7]][[1]], 7] = 5
+  C[to_move[[7]][[2]], 7] = 2
+  
+  # Time 8
+  Theta[ , , 8] = Theta[ , , 7]
+  Theta[5, , 8] = NA
+  Theta[2, 2:3, 8] = 10
+  Theta[1, 4, 8] = 10
+  
+  C[ , 8] = C[ , 7]
+  to_move[[8]] = list(which(C[ , 7] == 5),
+                      sample(which(C[ , 7] == 1), 5, replace = FALSE))
+  C[to_move[[8]][[1]], 8] = 4
+  C[to_move[[8]][[2]], 8] = 2
+  
+  
+  # Y
+  prtop = 0.95
+  prother = 1-prtop
+  for (t in 1:nT){
+    
+    for (cl in sort(unique(C[ , t]))){
+      
+      idx = which(C[ , t] == cl)
+      
+      for (j in 1:p){
+        val = list_values[[t]][[j]]
+        m = length(val)
+        pr = rep(0, max(val))
+        top = Theta[cl, j, t]
+        others = val[val != top]
+        pr[top] = prtop
+        if (t == 5 & cl != 6){
+          pr[others] = rep(prother/(m-2), m-1)
+          pr[9] = 1e-6
+        } else if (t== 5 & cl == 6){
+          pr[top] = 0.99
+          pr[others] = 1e-6
+        } else {
+          pr[others] = rep(prother/(m-1), m-1)
+        }
+        Y[idx, j, t] = sample(val, length(idx), prob = pr[pr!=0], replace = T)
+      }
+      
+    }
+    
+  }
+  
+  randomorder = sample(1:n, n, replace = FALSE)
+  
+  out = list(Y = Y[randomorder, , ], C = C[randomorder, ], Theta = Theta, to_move = to_move,
+             orig = list(Y = Y, C = C),
+             info = list(n = n, p = p, nT = nT, ncl = ncl,
+                         list_values = list_values))
+  
+  return(out)
+}
+
+# Plots ----
+plot_tHMM_flow = function(ppe, tosort = TRUE, show.text = TRUE,
+                          alpha_flow = 0.4, alpha_stratum = 1, add2title = ""){
+  library(ggalluvial)
+  library(grafify)
+  
+  if (tosort){
+    ppe = ppe %>% seqsort()
+  }
+  
+  # clnms = colnames(ppe)
+  colnames(ppe) = 1:ncol(ppe)
+  
+  max_ncl = max(ppe)
+  
+  clust_flow = ppe %>% 
+    as.data.frame() %>% tibble::rownames_to_column(var = "obs") %>% dplyr::mutate(freq = 1) %>% 
+    reshape2::melt(id.vars = c("obs", "freq"), variable.name = "year", value.name = "cluster") %>% 
+    dplyr::mutate(cluster = factor(cluster)) 
+  
+  
+  plt_tks = c("1"="2000", "2"="2001", "3"="2002", "4"="2003", "5"="2004",
+              "6"="2005", "7"="2006", "8"="2007", "9"="2008", "10"="2009",
+              "11"="2010", "12"="2011", "13"="2012", "14"="2013", "15"="2014",
+              "16"="2015", "17"="2016", "18"="2017", "19"="2018", "20"="2019",
+              "21"="2020", "22"="2021")
+  
+  plt_thm = theme_grey() + 
+    theme(legend.position = "none", 
+          plot.title = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.y = element_blank())
+  
+  plt = clust_flow %>%
+    ggplot(map = aes(x = year, y = freq, stratum = cluster, 
+                     alluvium = obs, fill = cluster, label = cluster)) +
+    geom_flow(alpha = alpha_flow) + 
+    geom_stratum(alpha = alpha_stratum, color = "white") +
+    scale_x_discrete(expand = c(0.025, 0.025), labels = plt_tks) +
+    scale_y_continuous(expand = c(0.025, 0.025)) +
+    labs(x = "Age class", y = "Causes of death") +
+    ggtitle(paste("Cluster evolution over age classes", add2title)) + 
+    plt_thm# + theme(axis.text.x = element_blank(),
+            #        axis.ticks.x = element_blank())
+  
+  if (show.text){
+    plt = plt + geom_text(stat = "stratum", size = 3)
+  }
+  
+  return(plt)
+}
