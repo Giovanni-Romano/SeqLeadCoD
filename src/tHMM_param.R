@@ -27,7 +27,7 @@ out = tHMM_gibbs_parameters(
   par_likelihood = par_lik,
   ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, 
                   verbose = "1"),
-  ctr_save = list(save = FALSE, filepath = "output/tHMM/",
+  ctr_save = list(save = TRUE, filepath = "output/tHMM/",
                   filename = paste("param_", urntype, seedrun, ".RDS", sep = ""))
 )
 

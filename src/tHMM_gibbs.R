@@ -504,6 +504,7 @@ tHMM_gibbs_parameters = function(
       clock_time = format(Sys.time(), "%H:%M:%S")
       cat("\n\n",
           "##############################\n",
+          "Iter ", iter, " done!\n",
           "total exe time: ", diff_time_start, " mins \n  ",
           "last ", ctr_mcmc$print_step, " iter time: ", diff_time_last, " mins \n  ", 
           "print clock time: ", clock_time, "\n", 
@@ -515,7 +516,7 @@ tHMM_gibbs_parameters = function(
   
   if (ctr_save$save){
     saveRDS(list(mu = mu, sigma = sigma), 
-            file.path(ctr_save$filepath, paste0(ctr_save$filename, ".RDS")))
+             paste(ctr_save$filepath, ctr_save$filename, sep = ""))
   }
   
   return(list(mu = mu, sigma = sigma))
