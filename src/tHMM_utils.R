@@ -298,8 +298,6 @@ simdata = function(seed){
   
   # Time 2
   Theta[ , , 2] = Theta[ , , 1]
-  # Theta[5, , 2] = c(1, 7, 3, 3, 6)
-  # Theta[2, 4, 2] = Theta[1, 4, 2] 
   to_move[[2]] = list(sample(which(C[ , 1] == 2), 5, replace = FALSE),
                       sample(which(C[ , 1] == 6), 5, replace = FALSE))
   C[ , 2] = C[ , 1]
@@ -337,7 +335,10 @@ simdata = function(seed){
   Theta[6, , 5] = c(9, 9, 9, 9, 9)
   C[ , 5] = C[ , 4]
   to_move[[5]] = list(sample(which(C[ , 4] == 3), 10, replace = FALSE),
-                      sample(which(C[ , 4] == 1), 10, replace = FALSE))
+                      # The populations that move from cluster 1 to cluster 2 must
+                      # be sampled from those who were in cluster 1 not only at 
+                      # time 4, but also at time 3.
+                      sample(which(C[ , 4] == 1 & C[ , 3] == 1), 10, replace = FALSE))
   C[to_move[[5]][[1]][1:4], 5] = 6
   C[to_move[[5]][[1]][5:10], 5] = 4
   C[to_move[[5]][[2]], 5] = 2
@@ -360,7 +361,7 @@ simdata = function(seed){
   Theta[1, 5, 7] = 10
   Theta[2, 4:5, 7] = 10
   Theta[4, 4:5, 7] = 10
-  Theta[5, 5, 7] = 10
+  Theta[5, 4:5, 7] = 10
   
   C[ , 7] = C[ , 6]
   to_move[[7]] = list(sample(which(C[ , 6] == 4), 12, replace = FALSE),
