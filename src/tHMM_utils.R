@@ -371,14 +371,14 @@ simdata = function(seed){
   
   # Time 8
   Theta[ , , 8] = Theta[ , , 7]
-  Theta[5, , 8] = NA
+  Theta[4, , 8] = NA
   Theta[2, 2:3, 8] = 10
   Theta[1, 4, 8] = 10
   
   C[ , 8] = C[ , 7]
-  to_move[[8]] = list(which(C[ , 7] == 5),
+  to_move[[8]] = list(which(C[ , 7] == 4),
                       sample(which(C[ , 7] == 1), 5, replace = FALSE))
-  C[to_move[[8]][[1]], 8] = 4
+  C[to_move[[8]][[1]], 8] = 5
   C[to_move[[8]][[2]], 8] = 2
   
   
