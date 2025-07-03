@@ -21,6 +21,17 @@ sim = simdata(seed = seed)
 Y = sim$Y
 p = sim$info$p
 m = apply(sim$Y, 2, function(x) length(unique(c(x))))
+unique_original = apply(Y, 2, function(x) unique(c(x)) %>% sort)
+unique_converted = lapply(m, function(x) 1:x)
+Y.converted = array(NA, dim = dim(Y))
+for (i in 1:dim(Y)[1]){
+  for (j in 1:dim(Y)[2]){
+    Y.converted[i, j, ] = match(Y[i, j, ], unique_original[[j]], nomatch = NA)
+  }
+}
+sim$Y.converted = Y.converted
+sim$info$unique = list(original_lab = unique_original,
+                        converted_lab = unique_converted)
 n = sim$info$n
 nT = sim$info$nT
 
@@ -63,14 +74,14 @@ eta = 0.5
 }
 
 seedrun = seed
-nburn = 15000
-nchain = 15000
+nburn = 10*10^3
+nchain = 20*10^3
 printstep = 1000
 nclinit = 50
 urntype = "Gnedin"
 
 out = tHMM_gibbs(
-  Y = Y,
+  Y = Y.converted,
   m = m,
   # Parameters for the likelihood-specific local parameters
   par_likelihood = list(u = u, # First hyperparam HIG
@@ -90,15 +101,15 @@ out = tHMM_gibbs(
   ctr_alpha = list(fix_alpha.flag = FALSE)
 )
 
-ncltrace = apply(out$output$C, c(2, 3), function(x) length(unique(x)))
-ncltrue = data.frame(Year = 1:nT, ncl = apply(sim$C, 2, function(x) length(unique(x))))
-ncltrace %>% 
-  melt(varnames = c("Year", "Iteration"), value.name = "ncl") %>% 
-  filter(Iteration > 5) %>% 
-  ggplot(aes(x = Iteration, y = ncl, group = Year)) +
-  geom_line(aes(color = as.factor(Year)), alpha = 0.5) + 
-  facet_wrap(~ Year, ncol = 2) +
-  geom_hline(data = ncltrue, aes(yintercept = ncl), linetype = "dashed", color = "red")
+# ncltrace = apply(out$output$C, c(2, 3), function(x) length(unique(x)))
+# ncltrue = data.frame(Year = 1:nT, ncl = apply(sim$C, 2, function(x) length(unique(x))))
+# ncltrace %>% 
+#   melt(varnames = c("Year", "Iteration"), value.name = "ncl") %>% 
+#   filter(Iteration > 5) %>% 
+#   ggplot(aes(x = Iteration, y = ncl, group = Year)) +
+#   geom_line(aes(color = as.factor(Year)), alpha = 0.5) + 
+#   facet_wrap(~ Year, ncol = 2) +
+#   geom_hline(data = ncltrue, aes(yintercept = ncl), linetype = "dashed", color = "red")
 
 ppe = apply(out$output$C[ , , -c(1:nburn)], 2, function(x) salso::salso(t(x)))
 NMI = sapply(1:nT, function(t) aricode::NMI(sim$C[, t], ppe[, t]))
