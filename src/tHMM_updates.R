@@ -21,8 +21,8 @@ update_gamma = function(i, gamma_t, alpha_t, C_t, C_tm1, eta){
   # Find set j to whom obs. i belongs
   j = which(C_t[i, ] == 1)
   n.R = length(R_tmi)
-  n_j = sum(C_t[R_tpi, j])
-  K.R = sum(colSums(C_t[R_tmi, , drop = FALSE]) > 0) # nmbr of clusters in reduced partition
+  n_j = sum(C_t[R_tpi, j]) # Number of units in cluster j in reduced partition assuming gamma_{it} = 1
+  K.R = sum(colSums(C_t[R_tmi, , drop = FALSE]) > 0) # nmbr of clusters in reduced partition without "i"
   
   if (n.R == 0) { # If conditioning partition is empty
     ratio = 1
