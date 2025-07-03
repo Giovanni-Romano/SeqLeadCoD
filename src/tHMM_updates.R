@@ -163,8 +163,8 @@ update_label = function(i,
     C_t = cbind(C_t, 0)
     C_t[i, H + 1] = 1
     # And add the new cluster-specific parameter
-    mu = rbind(mu, mu.new)
-    sigma = rbind(sigma, sigma.new)
+    mu = rbind(mu, unname(mu.new))
+    sigma = rbind(sigma, unname(sigma.new))
   }
   
   # Return the updated partition
