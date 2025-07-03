@@ -33,8 +33,8 @@ tHMM_gibbs = function(
   n = dims[1]
   p = dims[2]
   .T = dims[3]
-  m.inner = apply(Y, 2, function(x) length(unique(c(x)))) %>% unname()
-  if (any(m != m.inner)){stop("Provided m is not consistent with Y!")}
+  # m.inner = apply(Y, 2, function(x) length(unique(c(x)))) %>% unname()
+  # if (any(m != m.inner)){stop("Provided m is not consistent with Y!")}
   attrlist = lapply(m, function(x) 1:x)
   
   # Set and check the control parameters
@@ -87,7 +87,7 @@ tHMM_gibbs = function(
   for (t in 1:.T){
     for (h in 1:ncl.init){
       for (j in 1:p)
-        mu.init[[t]][h, p] = sample(1:m[j], 1)
+        mu.init[[t]][h, j] = sample(1:m[j], 1)
     }
   }
   sigma.init = replicate(.T, matrix(1, nrow = ncl.init, ncol = p), simplify = FALSE)
@@ -120,7 +120,7 @@ tHMM_gibbs = function(
   for (d in 1:niter) {
     # Start loop in t ----
     for (t in 1:.T) {
-      
+      if (t == .T & (d %% 10 == 0)){browser()}
       Y_t = Y[ , , t]
       
       if (verbose > 0) {
