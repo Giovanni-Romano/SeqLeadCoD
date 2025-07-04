@@ -113,9 +113,7 @@ tHMM_gibbs = function(
   
   # Counter for intermediate saves
   counter_save = 0L
-  # How many iter between intermediate saves
-  iter_to_save = 2500
-  
+  iter_to_save = 10000
   
   # Elapsed time initialization
   time_start = time_last = Sys.time()
@@ -129,6 +127,7 @@ tHMM_gibbs = function(
   for (d in 1:niter) {
     # Start loop in t ----
     for (t in 1:.T) {
+      
       Y_t = Y[ , , t]
       
       if (verbose > 0) {
@@ -365,7 +364,7 @@ tHMM_gibbs = function(
                               ctr = list(ctr_mcmc = ctr_mcmc,
                                          ctr_save = ctr_save,
                                          ctr_alpha = ctr_alpha)),
-                 output = list(C = C[ , , 1:d], alpha = alpha[ , 1:d]),
+                 output = list(C = C[ , , 1:d], alpha = alpha[ , 1:d], gamma = gamma[ , 1:d]),
                  execution_time = diff_time_start)
       
       saveRDS(out, paste(ctr_save$filepath, inter_save_filename, sep = ""))
@@ -380,7 +379,7 @@ tHMM_gibbs = function(
                               ctr = list(ctr_mcmc = ctr_mcmc,
                                          ctr_save = ctr_save,
                                          ctr_alpha = ctr_alpha)),
-                 output = list(C = C, alpha = alpha),
+                 output = list(C = C, alpha = alpha, gamma = gamma),
                  execution_time = diff_time_start)
       saveRDS(out, paste(ctr_save$filepath, ctr_save$filename, sep = ""))
       rm(out); gc()
@@ -404,7 +403,7 @@ tHMM_gibbs = function(
                           ctr = list(ctr_mcmc = ctr_mcmc,
                                      ctr_save = ctr_save,
                                      ctr_alpha = ctr_alpha)),
-             output = list(C = C, alpha = alpha),
+             output = list(C = C, alpha = alpha, gamma = gamma),
              execution_time = diff_time_start)
   
   if (ctr_save$save) {
