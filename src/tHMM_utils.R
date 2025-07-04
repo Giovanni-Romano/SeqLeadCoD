@@ -278,7 +278,7 @@ simdata = function(seed){
                      list(c(1, 2, 9), c(2, 3, 5, 7, 8, 9), c(3, 4, 5, 7, 8, 9), c(3, 4, 5, 6, 8, 9), c(4, 6, 9)),
                      list(c(1, 2), c(2, 3, 5, 7, 8), c(3, 4, 5, 7, 8), c(3, 4, 5, 6, 8), c(4, 6)),
                      list(c(1, 2), c(2, 3, 5, 7, 8, 10), c(3, 4, 5, 7, 8, 10), c(3, 4, 5, 6, 8, 10), c(4, 6, 10)),
-                     list(c(1, 2), c(2, 5, 7, 8, 10), c(3, 4, 5, 8, 10), c(3, 4, 5, 8, 10), c(4, 6, 10)))
+                     list(c(1, 2), c(2, 5, 7, 8, 10), c(3, 4, 5, 8, 10), c(3, 4, 5, 6, 8, 10), c(4, 6, 10)))
   
   # Store objects
   C = array(NA, dim = c(n, nT), dimnames = list("Subject" = 1:n, "Year" = 1:nT))
@@ -360,7 +360,7 @@ simdata = function(seed){
   Theta[ , , 7] = Theta[ , , 6]
   Theta[1, 5, 7] = 10
   Theta[2, 4:5, 7] = 10
-  Theta[4, 4:5, 7] = 10
+  Theta[4, 5, 7] = 10
   Theta[5, 4:5, 7] = 10
   
   C[ , 7] = C[ , 6]
@@ -371,15 +371,12 @@ simdata = function(seed){
   
   # Time 8
   Theta[ , , 8] = Theta[ , , 7]
-  Theta[4, , 8] = NA
   Theta[2, 2:3, 8] = 10
   Theta[1, 4, 8] = 10
   
   C[ , 8] = C[ , 7]
-  to_move[[8]] = list(which(C[ , 7] == 4),
-                      sample(which(C[ , 7] == 1), 5, replace = FALSE))
-  C[to_move[[8]][[1]], 8] = 5
-  C[to_move[[8]][[2]], 8] = 2
+  to_move[[8]] = list(sample(which(C[ , 7] == 1), 5, replace = FALSE))
+  C[to_move[[8]][[1]], 8] = 2
   
   
   # Y

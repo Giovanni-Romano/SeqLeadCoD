@@ -96,7 +96,7 @@ out = tHMM_gibbs(
   ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, 
                   ncl.init = nclinit, verbose = "1"),
   # Control parameters for result storing
-  ctr_save = list(save = TRUE, filepath = "output/tHMM/simstudy/",
+  ctr_save = list(save = TRUE, filepath = "output/tHMM/simstudy_simplified/",
                   filename = paste("res_", urntype, seedrun, ".RDS", sep = "")),
   ctr_alpha = list(fix_alpha.flag = FALSE)
 )
@@ -115,7 +115,7 @@ ppe = apply(out$output$C[ , , -c(1:nburn)], 2, function(x) salso::salso(t(x)))
 NMI = sapply(1:nT, function(t) aricode::NMI(sim$C[, t], ppe[, t]))
 
 saveRDS(list(ppe = ppe, NMI = NMI, data = sim),
-        paste0("output/tHMM/simstudy/summary_", urntype, seedrun, ".RDS"))
+        paste0("output/tHMM/simstudy_simplified/summary_", urntype, seedrun, ".RDS"))
 
 # nT = sim$info$nT
 # lapply(1:nT, function(t) table(true = sim$C[,t], ppe = ppe[, t]))
