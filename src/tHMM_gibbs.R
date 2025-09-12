@@ -37,14 +37,14 @@ tHMM_gibbs = function(
   if (any(m != m.inner)){stop("Provided m is not consistent with Y!")}
   attrlist = lapply(m, function(x) 1:x)
   
-  # Check that labs in Y coincide with attrlist
-  check_lab = rep(NA, p)
-  for (j in 1:p){
-    check_lab[j] = all(sort(unique(c(Y.converted[ , j, ]))) == attrlist[[j]])
-  }
-  if (!all(check_lab)) {
-    stop("The labels in Y do not match the provided m vector!")
-  }
+  # # Check that labs in Y coincide with attrlist
+  # check_lab = rep(NA, p)
+  # for (j in 1:p){
+  #   check_lab[j] = all(sort(unique(c(Y.converted[ , j, ]))) == attrlist[[j]])
+  # }
+  # if (!all(check_lab)) {
+  #   stop("The labels in Y do not match the provided m vector!")
+  # }
   
   # Set and check the control parameters
   ctr_mcmc = do.call("set_ctr_mcmc", ctr_mcmc)
@@ -220,6 +220,7 @@ tHMM_gibbs = function(
           }
         }
         
+        
         out_uplab = update_label(i = i,
                                  Y_it = Y_t[i, ],
                                  C_t = C.tmp[[t]],
@@ -229,6 +230,7 @@ tHMM_gibbs = function(
                                  eta = eta,
                                  mu = mu.tmp[[t]],
                                  sigma = sigma.tmp[[t]], 
+                                 newsigma = newsigmavalues[i, ],
                                  m = m,
                                  u = u,
                                  v = v,

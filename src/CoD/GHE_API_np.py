@@ -7,12 +7,12 @@ from tqdm import tqdm  # Added import for tqdm
 
 # 1. Define country codes
 country_codes = [
-    'ALB'  # Changed from AFG to ALB as in your desired URL
+    'FIN'  # Changed from AFG to ALB as in your desired URL
 ]
 
 # 2. Define age group codes
 age_groups = [
-    'Y20T24'  # Changed from Y0T6 to Y20T24 as in your desired URL
+    'TOTAL'  # Changed from Y0T6 to Y20T24 as in your desired URL
 ]
 # Uncomment to use more age groups
 # age_groups = ['Y0T6', 'Y7T27D', 'Y28D364D', 'Y1T4', 'Y5T9', 'Y10T14', 'Y15T19', 'Y20T24',
@@ -20,20 +20,26 @@ age_groups = [
 #              'Y65T69', 'Y70T74', 'Y75T79', 'Y80T84', 'Y85T89', 'Y90T94', 'Y95T99', 'YGE100']
 
 # 3. Sex codes (only MALE and FEMALE)
-sexes = ['MALE']
+sexes = ['FEMALE']
 # Uncomment to include female
 # sexes = ['MALE', 'FEMALE']
 
 # 4. Years (choose your range)
-years = [2015]  # Changed from 2000 to 2015 as in your desired URL
+years = [2020]  # Changed from 2000 to 2015 as in your desired URL
 
 # 5. Base URL
 base_url = "https://xmart-api-public.who.int/DEX_CMS/GHE_FULL"
+# base_url = "https://xmart-api-public-uat.who.int/DEX_CMS/GHE_COD"
 
 # 6. Collect all results
 all_results = []
 
 combos = list(itertools.product(country_codes, years, sexes, age_groups))
+
+country = combos[0][0]  # SLB
+year = combos[0][1]  # 2004
+sex = combos[0][2]  # FEMA
+age = combos[0][3]  # Y20T24
 
 # 7. Loop over combinations
 for country, year, sex, age in tqdm(combos, desc="Fetching WHO GHE data"):
@@ -71,7 +77,8 @@ for country, year, sex, age in tqdm(combos, desc="Fetching WHO GHE data"):
 # 8. Save to CSV
 if all_results:
     df = pd.DataFrame(all_results)
-    df.to_csv("WHO_GHE_Top1.csv", index=False)d
+    df.to_csv("WHO_GHE_Top1.csv", index=False)
     print("Saved all Top 1 data to WHO_GHE_Top1.csv")
 else:
     print("No results found. Check the API response.")
+# %%

@@ -42,6 +42,7 @@ sexes = ['MALE', 'FEMALE']
 years = list(range(2000, 2022))
 base_url = "https://xmart-api-public.who.int/DEX_CMS/GHE_FULL"
 
+
 # 2. Prepare all combinations
 combos = list(itertools.product(country_codes, years, sexes, age_groups))
 

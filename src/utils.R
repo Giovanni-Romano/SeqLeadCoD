@@ -1,3 +1,27 @@
+# HAMMING DISTANCE FUNCTION ----
+hamming_matrix <- function(X) {
+  
+  if (sum(is.na(X)) > 0) stop("Currently not implemented with NA")
+  
+  # Ensure data.frame of factors, column-wise
+  XD <- as.data.frame(X, stringsAsFactors = FALSE)
+  XD[] <- lapply(XD, function(col) {
+    f <- factor(col)
+    f
+  })
+  
+  # One-hot encode all columns; no intercept
+  Z <- model.matrix(~ . - 1, data = XD,
+                    contrasts = lapply(XD, contrasts, contrasts = FALSE))
+  
+  # Hamming = 0.5 * L1 distance on the one-hot representation
+  D <- as.matrix(dist(Z, method = "manhattan")) / 2
+  
+  # Ensure exact zeros on diagonal (numerical nicety)
+  diag(D) <- 0
+  as.dist(D)
+}
+
 # MISCELLANEOUS FUNCTIONS ----
 ## From vector of labels to binary matrix and viceversa ----
 vec2mat <- function(clust_lab){

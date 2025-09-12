@@ -1,0 +1,19 @@
+hyperg2.cpp
+- norm_const2: compute norm. const. I_j in formula (S6)
+- hyperg2: essentially a wrapper for computing the Gauss Hypergeom. function 2F1
+- dhyper_raf2: computes density for the vector omega_1, …, omega_p both in log and linear scale
+- newton_hyper2: implements Newton method to solve equation concerning the cdf of omega_j in formula (S8)
+- lF_conK2: compute the log cdf of omega_j in formula (S8)
+- bisec_hyper2: similar to newton_hyper2, but it uses bisection method (and not Newton)
+- rhyper_raf2: sample from density of omega_j
+- rhyper_sig2: sample from density of sigma_j
+- dhyper_sig_raf2: compute density of the vector sigma_1, …, sigma_p
+
+gibbs_utility.cpp
+- Center_prob: computes the full conditional for the centers with formula given just below formula (6); it outputs a list of p elements, each being the vector of (full) probability (already normalized) for the j-th center
+- Center_prob: same as Center_prob but with sigma being a scalar and not a vector (hence constant across the p variables)
+- Samp_Center: sample a center given the probabilities computed in Center_prob
+- dhamming: hamming density for a single variable (among the p)
+- Attributes_List: given the matrix of data, it returns a list with the attributes for all p variables
+- hamming_distance: computes the Hamming distance between two vectors
+- alloc_matrix: for each observation, it computes the probability of being in one of the M component using Argiento prior on partitions (can be adapted to our setting)

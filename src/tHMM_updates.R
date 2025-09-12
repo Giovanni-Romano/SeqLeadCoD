@@ -68,6 +68,7 @@ update_label = function(i,
                         eta, 
                         mu,
                         sigma,
+                        newsigma,
                         m,
                         u,
                         v,
@@ -89,6 +90,8 @@ update_label = function(i,
   if (gamma_t[i] == 1) {
     return(list(lab = C_t, center = mu, scale = sigma))
   }
+  
+  p = length(m)
   
   # Current values for i
   k.old = which(C_t[i, ] == 1)
@@ -118,7 +121,9 @@ update_label = function(i,
     mu.new = mu.old
     sigma.new = sigma.old
   } else {
-    mu.new = sapply(m, function(x) sample(1:x, 1))
+    # mu.new = sapply(m, function(x) sample.int(1:x, 1))
+    mu.new = ceiling(runif(p, max = m))
+    
     sigma.new = sapply(1:p, function(j){
       rhyper_sig2(n = 1, d = v[j], c = u[j], m = m[j])
     })

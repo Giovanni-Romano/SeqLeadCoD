@@ -50,7 +50,6 @@ arma::uvec compatibility_check_cpp(int i, int H, const arma::uvec& gamma_tp1,
 arma::vec dhamming_multicluster_cpp(const arma::vec& x, const arma::mat& mu, const arma::mat& sigma, 
                                     const arma::vec& m, bool logscale = false) {
   int H = mu.n_rows; // Number of rows
-  int p = mu.n_cols; // Number of columns
   
   // Step 1: Create matrix M by repeating vector m across rows
   arma::mat M = repmat(m.t(), H, 1); // Repeat m as a row vector across H rows
