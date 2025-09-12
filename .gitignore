@@ -5,3 +5,10 @@
 err_out/
 output/
 img/
+data/
+src/AP_results.R
+src/AP_run.R
+src/AP_simt8.R
+src/AP_UniformGini.R
+src/Hamming-mixture-model-12EA.zip
+src/CPE
