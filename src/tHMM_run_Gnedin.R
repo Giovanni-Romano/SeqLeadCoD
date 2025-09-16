@@ -10,13 +10,14 @@ Rcpp::sourceCpp('src/ArgientoPaci/code/gibbs_utility.cpp')
 Rcpp::sourceCpp('src/ArgientoPaci/code/hyperg2.cpp')
 
 cmline = commandArgs(trailingOnly = TRUE)
+cat("Argument from command line: ", cmline, sep = "")
 sex = cmline[1]
 seed = cmline[2] %>% as.integer
 
 if (sex == "female"){
   ghe = readRDS("data/rds/GHEdf_female.RDS")
-} else if (sex == "female"){
-  ghe = readRDS("data/rds/GHEdf_female.RDS")
+} else if (sex == "male"){
+  ghe = readRDS("data/rds/GHEdf_male.RDS")
 } else {
   stop("Wrong sex value")
 }
