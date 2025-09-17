@@ -147,7 +147,7 @@ tHMM_gibbs = function(
       }
       
       # Shuffle order update gammas
-      visited.gamma = c()
+      # visited.gamma = c()
       tovisit.gamma = sample(1:n, n, replace = FALSE)
       
       # Start loop in j.gamma ----
@@ -155,7 +155,7 @@ tHMM_gibbs = function(
         # Select the next node to visit
         i = tovisit.gamma[1]
         tovisit.gamma = tovisit.gamma[-1]
-        visited.gamma = c(visited.gamma, i)
+        # visited.gamma = c(visited.gamma, i)
         
         if (verbose == 2) {
           if (d %% print_step == 0) {
@@ -199,7 +199,7 @@ tHMM_gibbs = function(
       }
       
       # Shuffle order update labels
-      visited.labels = c()
+      # visited.labels = c()
       tovisit.labels = sample(1:n, n, replace = FALSE)
       
       # Start loop in j.lab ----
@@ -207,7 +207,7 @@ tHMM_gibbs = function(
         # Select the next node to visit
         i = tovisit.labels[1]
         tovisit.labels = tovisit.labels[-1]
-        visited.labels = c(visited.labels, i)
+        # visited.labels = c(visited.labels, i)
         
         if (verbose == 2) {
           if (d %% print_step == 0) {
@@ -386,6 +386,7 @@ tHMM_gibbs = function(
       saveRDS(out, paste(ctr_save$filepath, ctr_save$filename, sep = ""))
       rm(out); gc()
     }
+    
   } # End loop in d ----
   
   now = Sys.time()
