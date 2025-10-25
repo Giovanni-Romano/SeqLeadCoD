@@ -84,14 +84,13 @@ tHMM_gibbs = function(
   C = array(NA_integer_, dim = c(n, .T, niter))
   alpha = array(NA_real_, dim = c(.T, niter))
   gamma = array(NA_real_, dim = c(.T, niter))
-  
+  log_lik = array(NA_real_, dim = c(.T, niter))
   
   # Initial values
   ncl.init = ctr_mcmc$ncl.init
   C.initmp = sample(1:ncl.init, n, TRUE)
   C.initmp = match(C.initmp, sort(unique(C.initmp))) 
   C.init = matrix(C.initmp, nrow = n, ncol = .T)
-  # mu.init = apply(Y, 3, function(x) x, simplify = F)
   mu.init = replicate(.T, matrix(NA, nrow = ncl.init, ncol = p), simplify = F)
   for (t in 1:.T){
     for (h in 1:ncl.init){
@@ -99,7 +98,6 @@ tHMM_gibbs = function(
         mu.init[[t]][h, j] = sample(1:m[j], 1)
     }
   }
-  sigma.init = replicate(.T, matrix(1, nrow = ncl.init, ncol = p), simplify = FALSE)
   alpha.init = rep(0.01, .T)
   alpha.init[1] = NA
   gamma.init = matrix(0, nrow = n, ncol = .T+1)
@@ -107,9 +105,28 @@ tHMM_gibbs = function(
   # Current values
   C.tmp = apply(C.init, 2, function(x) vec2mat(x), simplify = F)
   mu.tmp = mu.init
-  sigma.tmp = sigma.init
   alpha.tmp = alpha.init
   gamma.tmp = gamma.init
+  clS.tmp = lapply(C.tmp, function(c) colSums(c))
+  matches.tmp = list()
+  for (t in 1:.T){
+    ncl_t = ncol(C.tmp[[t]])
+    tmp = matrix(NA, ncl_t, p)
+    for (k in 1:ncl_t){
+      idx_t = (C.tmp[[t]][, k] == 1)
+      tmp[k, ] = colSums(Y[idx_t, , t] == matrix(mu.tmp[[t]][k, ], 
+                                                 nrow = sum(idx_t), 
+                                                 ncol = p, byrow = TRUE))
+    }
+    matches.tmp[[t]] = tmp
+  }
+  
+  
+  # Pre-compute all possible values of normalization constant
+  cached_norm_const = build_cached_norm_const(Smax = n, u = u, v = v, m = m)
+  
+  # Pre-compute the denominator for the marginal loglik
+  denomin_log_lik = sapply(cached_norm_const, function(x) x[[1]])
   
   # Counter for intermediate saves
   counter_save = 0L
@@ -229,8 +246,9 @@ tHMM_gibbs = function(
                                  gamma_tp1 = gamma.tmp[, t + 1],
                                  eta = eta,
                                  mu = mu.tmp[[t]],
-                                 sigma = sigma.tmp[[t]], 
-                                 newsigma = newsigmavalues[i, ],
+                                 clS_t = clS.tmp[[t]],
+                                 matches_t = matches.tmp[[t]],
+                                 cached_I = cached_norm_const,
                                  m = m,
                                  u = u,
                                  v = v,
@@ -238,7 +256,8 @@ tHMM_gibbs = function(
         
         C.tmp[[t]] = out_uplab$lab
         mu.tmp[[t]] = out_uplab$center
-        sigma.tmp[[t]] = out_uplab$scale
+        clS.tmp[[t]] = out_uplab$clS
+        matches.tmp[[t]] = out_uplab$matches
       }
       # End loop in j.lab ----
       
@@ -273,30 +292,37 @@ tHMM_gibbs = function(
           }
         }
         
-        idx_h = C.tmp[[t]][ , h] == 1
+        idx_h = (C.tmp[[t]][ , h] == 1)
         Y_th = Y_t[idx_h, , drop = FALSE]
+        matches_h = count_matches_update_centers(Y_th, m)
+        clS_h = sum(idx_h)
+        # logprob.tmp_old = logprob_update_centers(M = Y_th, m = m, 
+        #                                      clS = clS_h,
+        #                                      u = u, v = v)
         
-        prob.tmp = Center_prob(data = Y_th,
-                               sigma = sigma.tmp[[t]][h,],
-                               attrisize = m)
+        logprob.tmp = eval_logprob_update_centers(M = Y_th, m = m,
+                                                  clS = clS_h, 
+                                                  tabs = cached_norm_const)
         
-        mu.tmp[[t]][h,] = Samp_Center(center_prob = prob.tmp,
-                                      attriList = attrlist, p=p)
+        # if (!all(sapply(1:19, function(j) all(logprob.tmp_old[[j]] == logprob.tmp[[j]])))){
+        #   stop("Nuovo calcolo prob non funziona")
+        # }
         
-        size_h = sum(idx_h)
-        
-        for (j in 1:p) {
-          
-          dd = sum(Y_t[idx_h , j] != mu.tmp[[t]][h, j])
-          cc = size_h - dd
-          
-          sigma.tmp[[t]][h, j] = rhyper_sig2(n = 1,
-                                             d = v[j]+dd,
-                                             c = u[j]+cc,
-                                             m = m[j])
-        }
+        draw.tmp = sapply(logprob.tmp, sample_gumbel_max)
+        mu.tmp[[t]][h,] = unname(draw.tmp)
       }
       # End loop in h ----  
+      
+      # After the sampling of the new centers I have to update the matches counts
+      tmp = matrix(NA, ncluster, p)
+      for (k in 1:ncluster){
+        idx_t = (C.tmp[[t]][, k] == 1)
+        tmp[k, ] = colSums(Y[idx_t, , t] == matrix(mu.tmp[[t]][k, ], 
+                                                   nrow = sum(idx_t), 
+                                                   ncol = p, byrow = TRUE))
+      }
+      matches.tmp[[t]] = tmp
+      
       
       if (verbose > 0) {
         if (d %% print_step == 0) {
@@ -329,10 +355,18 @@ tHMM_gibbs = function(
         }
       }
       
+      
+      log_lik_t.tmp = NA
+      numer_log_lik = eval_norm_const(clS = clS.tmp[[t]], matches = matches.tmp[[t]],
+                      tabs = cached_norm_const)
+      log_lik_t.tmp = sum(colSums(numer_log_lik) - denomin_log_lik)
+      
       # Store the results
       C[ , t, d] = mat2vec(C.tmp[[t]])
       alpha[t, d] = alpha.tmp[t]
       gamma[t, d] = mean(gamma.tmp[ , t])
+      log_lik[t, d] = log_lik_t.tmp
+      
     }
     # End loop in t ----
     
@@ -366,7 +400,8 @@ tHMM_gibbs = function(
                               ctr = list(ctr_mcmc = ctr_mcmc,
                                          ctr_save = ctr_save,
                                          ctr_alpha = ctr_alpha)),
-                 output = list(C = C[ , , 1:d], alpha = alpha[ , 1:d], gamma = gamma[ , 1:d]),
+                 output = list(C = C[ , , 1:d], alpha = alpha[ , 1:d], gamma = gamma[ , 1:d],
+                               loglik = log_lik),
                  execution_time = diff_time_start)
       
       saveRDS(out, paste(ctr_save$filepath, inter_save_filename, sep = ""))
@@ -381,7 +416,7 @@ tHMM_gibbs = function(
                               ctr = list(ctr_mcmc = ctr_mcmc,
                                          ctr_save = ctr_save,
                                          ctr_alpha = ctr_alpha)),
-                 output = list(C = C, alpha = alpha, gamma = gamma),
+                 output = list(C = C, alpha = alpha, gamma = gamma, loglik = log_lik),
                  execution_time = diff_time_start)
       saveRDS(out, paste(ctr_save$filepath, ctr_save$filename, sep = ""))
       rm(out); gc()
@@ -406,7 +441,7 @@ tHMM_gibbs = function(
                           ctr = list(ctr_mcmc = ctr_mcmc,
                                      ctr_save = ctr_save,
                                      ctr_alpha = ctr_alpha)),
-             output = list(C = C, alpha = alpha, gamma = gamma),
+             output = list(C = C, alpha = alpha, gamma = gamma, loglik = log_lik),
              execution_time = diff_time_start)
   
   if (ctr_save$save) {
@@ -526,7 +561,7 @@ tHMM_gibbs_parameters = function(
   
   if (ctr_save$save){
     saveRDS(list(mu = mu, sigma = sigma), 
-             paste(ctr_save$filepath, ctr_save$filename, sep = ""))
+            paste(ctr_save$filepath, ctr_save$filename, sep = ""))
   }
   
   return(list(mu = mu, sigma = sigma))

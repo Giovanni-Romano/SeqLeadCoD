@@ -65,10 +65,10 @@ update_label = function(i,
                         C_tp1,
                         gamma_t,
                         gamma_tp1,
+                        clS_t, matches_t,
+                        cached_I,
                         eta, 
                         mu,
-                        sigma,
-                        newsigma,
                         m,
                         u,
                         v,
@@ -82,13 +82,13 @@ update_label = function(i,
   ### - gamma_t: 
   ### - gamma_tp1: \gamma_{t+1}
   ### - eta: Gnedin parameter
-  ### - mu: matrix p * n_cluster of centers at time t
+  ### - mu: matrix n_cluster*p of centers at time t
   ### - m: vector of length p with m_j for every j
   ### - u: vector of length p with u_j for every j
   ### - v: vector of length p with v_j for every j
   
   if (gamma_t[i] == 1) {
-    return(list(lab = C_t, center = mu, scale = sigma))
+    return(list(lab = C_t, center = mu, clS = clS_t, matches = matches_t))
   }
   
   p = length(m)
@@ -96,7 +96,6 @@ update_label = function(i,
   # Current values for i
   k.old = which(C_t[i, ] == 1)
   mu.old = mu[k.old, ]
-  sigma.old = sigma[k.old, ]
   
   # Clusters with at least one observation (once obs. i is removed)
   non_empty = which(colSums(C_t[-i, , drop = FALSE]) > 0)
@@ -104,7 +103,6 @@ update_label = function(i,
   # Remove i-th observation from the partition
   C_t = C_t[, non_empty, drop = FALSE]
   mu = mu[non_empty, , drop = FALSE]
-  sigma = sigma[non_empty, , drop = FALSE]
   
   # Number of active clusters, after removing i-th observation
   H = ncol(C_t)
@@ -119,30 +117,63 @@ update_label = function(i,
   # Prepare cluster-specific parameter for potential (H+1)-th cluster
   if (length(k) == 0){
     mu.new = mu.old
-    sigma.new = sigma.old
   } else {
     # mu.new = sapply(m, function(x) sample.int(1:x, 1))
     mu.new = ceiling(runif(p, max = m))
-    
-    sigma.new = sapply(1:p, function(j){
-      rhyper_sig2(n = 1, d = v[j], c = u[j], m = m[j])
-    })
   }
   
-  # Log-likelihoods of old and new clusters
-  log_lik = dhamming_multicluster_cpp(Y_it, rbind(mu, mu.new), rbind(sigma, sigma.new), m, logscale = TRUE)
-  # log_lik = dhamming.multicluster(Y_it, rbind(mu, mu.new), rbind(sigma, sigma.new), m, logscale = TRUE)
+  # Update suffstat
+  suffstat = create_suffstat_loglik(clS = clS_t, matches = matches_t, H = H, 
+                                    non_empty = non_empty, k = k, Y_it = Y_it, 
+                                    mu = mu, mu.new = mu.new)
+  clS = suffstat$clS
+  matches = suffstat$matches
+  clS_mi = suffstat$clS_mi
+  matches_mi = suffstat$matches_mi
+  if (sum(clS_mi) != 182){browser()}
   
-  # if (any(round(log_lik, 6) != round(log_lik_cpp, 6))){
-  #   browser()
+  # Log-likelihoods of old and new clusters
+  # log_norm_const.old = norm_const2_mat(clS = clS,
+  #                                  matches = matches,
+  #                                  u = u, v = v, m = m,
+  #                                  log_scale = T)
+  # 
+  # 
+  # log_norm_const_mi.old = norm_const2_mat(clS = clS_mi,
+  #                                     matches = matches_mi,
+  #                                     u = u, v = v, m = m,
+  #                                     log_scale = T)
+  
+  log_norm_const = eval_norm_const(clS, matches, cached_I)
+  log_norm_const_mi = eval_norm_const(clS_mi, matches_mi, cached_I)
+  # 
+  # if (any(log_norm_const != log_norm_const.old) | any(log_norm_const_mi != log_norm_const_mi.old)){
+  #   stop("Nuovo calcolo di log_norm_const è sbagliato")
   # }
+  
+  # log_norm_const = matrix(NA, H+1, p)
+  # log_norm_const_mi = matrix(NA, H+1, p)
+  # for (h in 1:(H+1)){
+  #   for(j in 1:p){
+  #     log_norm_const[h, j] = norm_const2(d = v[j] + clS[h] - matches[h, j],
+  #                                        c = u[j] + matches[h, j],
+  #                                        m = m[j], log_scale = T)
+  # 
+  #     log_norm_const_mi[h, j] = norm_const2(d = v[j] + clS_mi[h] - matches_mi[h, j],
+  #                                           c = u[j] + matches_mi[h, j],
+  #                                           m = m[j], log_scale = T)
+  #   }
+  # }
+  
+  log_lik = rowSums(log_norm_const - log_norm_const_mi)
+  
   
   # Log-prior of old and new clusters
   log_pr = log(urn(n_mi, eta))
   
   # Compatibility checks
   comp_checks = compatibility_check_cppwrapper(i = i, H = H, gamma_tp1 = gamma_tp1,
-                                                   c_t = C_t, c_tp1 = C_tp1)
+                                               c_t = C_t, c_tp1 = C_tp1)
   # comp_checks = compatibility_check(i, H, k, gamma_tp1, C_t, C_tp1, safe = FALSE)
   
   # if (any(comp_checks != comp_checks_cpp)){
@@ -169,11 +200,15 @@ update_label = function(i,
     C_t[i, H + 1] = 1
     # And add the new cluster-specific parameter
     mu = rbind(mu, unname(mu.new))
-    sigma = rbind(sigma, unname(sigma.new))
   }
   
+  # Expand (if needed) and update S_t
+  suffstat = update_suffstat(suffstat, h = C_it, H = H, p = p)
+  
+  if (sum(suffstat$clS_new) != 183){browser()}
+  
   # Return the updated partition
-  return(list(lab = C_t, center = mu, scale = sigma))
+  return(list(lab = C_t, center = mu, clS = suffstat$clS_new, matches = suffstat$matches_new))
 }
 
 ## UPDATE ALPHA ----
@@ -181,4 +216,55 @@ update_alpha = function(gamma_t, pr_shape1, pr_shape2){
   shape1 = pr_shape1 + sum(gamma_t)
   shape2 = pr_shape2 + length(gamma_t) - sum(gamma_t)
   rbeta(1, shape1 = shape1, shape2 = shape2)
+}
+
+## UPDATE SUFFSTAT ----
+create_suffstat_loglik = function(clS, matches, H, non_empty, k, Y_it, mu, mu.new){
+  
+  # Reduce the dimensions of the sufficient statistics removing empty clusters
+  clS = c(clS[non_empty], 0)
+  matches = rbind(matches[non_empty, , drop = FALSE], 0)
+  
+  # Count matches between Y_it and centers of every cluster
+  matches_i = 1*(matrix(Y_it, nrow = H+1, ncol = p, byrow = T) == rbind(mu, mu.new))
+  
+  # Object to remove influence of i from current suffstat
+  rmv_clS = rep(0, H+1)
+  rmv_clS[k] = 1
+  rmv_matches = matrix(0, nrow = H+1, ncol = p)
+  rmv_matches[k, ] = matches_i[k, ]
+  
+  # Remove influence of i from current suffstat
+  clS_mi = clS - rmv_clS
+  matches_mi = matches - rmv_matches
+  
+  # Update suffstat with hypothetical addition of i to every cluster
+  clS = clS_mi + 1
+  matches = matches_mi + matches_i
+  
+  # Return updated suffstat
+  return(list(clS = clS, matches = matches,
+              clS_mi = clS_mi, matches_mi = matches_mi,
+              matches_i = matches_i))
+}
+
+
+update_suffstat = function(S, h, H, p){
+  if (h <= H) {
+    add_matches = matrix(0, H, p)
+    add_matches[h, ] = S$matches_i[h, ]
+    add_clS = rep(0, H)
+    add_clS[h] = 1
+    matches_new = S$matches_mi[-(H+1), ] + add_matches
+    clS_new = S$clS_mi[-(H+1)] + add_clS
+  } else {
+    add_matches = matrix(0, H+1, p)
+    add_matches[H+1, ] = S$matches_i[H+1, ]
+    matches_new = S$matches_mi + add_matches
+    clS_new = S$clS_mi; clS_new[H+1] = clS_new[H+1] + 1
+  }
+  
+  S_new = list(clS_new = clS_new, matches_new = matches_new)
+  
+  return(S_new)
 }
