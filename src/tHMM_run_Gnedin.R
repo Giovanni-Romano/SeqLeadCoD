@@ -15,9 +15,9 @@ sex = cmline[1]
 seed = cmline[2] %>% as.integer
 
 if (sex == "female"){
-  ghe = readRDS("data/rds/GHEdf_female.RDS")
+  ghe = readRDS("data/rds/GHEdf_female_5yrs.RDS")
 } else if (sex == "male"){
-  ghe = readRDS("data/rds/GHEdf_male.RDS")
+  ghe = readRDS("data/rds/GHEdf_male_5yrs.RDS")
 } else {
   stop("Wrong sex value")
 }
@@ -68,18 +68,19 @@ exp_ncl = sapply(eta_values, function(e) {
   round(sum(1:n*probs_gnedin))
 })
 cbind(eta = eta_values, exp_ncl = exp_ncl)
-eta = 0.45
+eta = 0.55
 {
   probs_gnedin = HGnedin(n, 1:n, gamma = eta)
   cat("prior expected ncl with eta ", eta, " is ", round(sum(1:n*probs_gnedin), 2), "\n", sep = "")
 }
 
 seedrun = seed
-nburn = 15000
-nchain = 15000
-printstep = 500
+nburn = 5000
+nchain = 25000
+printstep = 2500
 nclinit = 50
 urntype = "Gnedin"
+SAVE = TRUE
 
 out = tHMM_gibbs(
   Y = ghe.array,
@@ -95,9 +96,9 @@ out = tHMM_gibbs(
   ),
   # Control parameters for MCMC settings
   ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, 
-                  ncl.init = nclinit, verbose = "1"),
+                  ncl.init = nclinit, verbose = "2"),
   # Control parameters for result storing
-  ctr_save = list(save = TRUE, filepath = paste0("output/tHMM/", sex, "/"),
+  ctr_save = list(save = SAVE, filepath = paste0("output/tHMM/5yrs/", sex, "/"),
                   filename = paste("res_", urntype, seedrun, ".RDS", sep = "")),
   ctr_alpha = list(fix_alpha.flag = FALSE)
 )
