@@ -89,6 +89,6 @@ out = tHMM_gibbs_adaptive_PT(
   ctr_swap = list(nrep = .nrep, ntry = .ntry, start = .start_swap, deterministic = .deterministic, 
                   adaptive = .adaptive, prob_target = .prob_target, swap_step = 5),
   # Control parameters for result storing
-  ctr_save = list(save = SAVE, filepath = paste0("output/tHMM/5yrs/", sex, "/"),
+  ctr_save = list(save = SAVE, filepath = paste0("output/tHMM/5yrs/PT", sex, "/"),
                   filename = paste("res_", urntype, seedrun, ".RDS", sep = "")),
 )
