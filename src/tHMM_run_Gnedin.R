@@ -96,7 +96,7 @@ out = tHMM_gibbs(
   ),
   # Control parameters for MCMC settings
   ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, 
-                  ncl.init = nclinit, verbose = "2"),
+                  ncl.init = nclinit, verbose = "1"),
   # Control parameters for result storing
   ctr_save = list(save = SAVE, filepath = paste0("output/tHMM/5yrs/", sex, "/"),
                   filename = paste("res_", urntype, seedrun, ".RDS", sep = "")),
