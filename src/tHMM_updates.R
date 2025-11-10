@@ -87,6 +87,9 @@ update_label = function(i,
   ### - u: vector of length p with u_j for every j
   ### - v: vector of length p with v_j for every j
   
+  if (sum(clS_t) != 183){browser()}
+  if (any(clS_t - matches_t < 0)){browser()}
+  
   if (gamma_t[i] == 1) {
     return(list(lab = C_t, center = mu, clS = clS_t, matches = matches_t))
   }
@@ -127,7 +130,6 @@ update_label = function(i,
                                     non_empty = non_empty, k = k, Y_it = Y_it, 
                                     mu = mu, mu.new = mu.new)
   clS = suffstat$clS
-  if (sum(clS) != 183){browser()}
   matches = suffstat$matches
   clS_mi = suffstat$clS_mi
   matches_mi = suffstat$matches_mi

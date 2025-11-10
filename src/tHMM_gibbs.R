@@ -353,7 +353,7 @@ tHMM_gibbs_adaptive_PT = function(
   cat("ATT:", attempted_swap, "\n")
   cat("SUCC:", succesful_swap, "\n")
   
-  out = list("traces" = traces_to_save,
+  out = list("traces" = traces,
              "exec_time" = exec_time,
              par = list(par_likelihood = par_likelihood,
                         par_tRPM = par_tRPM),
@@ -700,7 +700,7 @@ tHMM_chain_swap = function(traces, d, temperatures, deterministic = FALSE, n_try
       mu.tmp = traces[[tr]]$mu.tmp
       alpha.tmp = traces[[tr]]$alpha.tmp
       gamma.tmp = traces[[tr]]$gamma.tmp
-      Cls.tmp = traces[[tr]]$Cls.tmp
+      clS.tmp = traces[[tr]]$clS.tmp
       matches.tmp = traces[[tr]]$matches.tmp
       
       # Put objects of tr+1 in tr
@@ -708,7 +708,7 @@ tHMM_chain_swap = function(traces, d, temperatures, deterministic = FALSE, n_try
       traces[[tr]]$mu.tmp = traces[[tr+1]]$mu.tmp
       traces[[tr]]$alpha.tmp = traces[[tr+1]]$alpha.tmp
       traces[[tr]]$gamma.tmp = traces[[tr+1]]$gamma.tmp
-      traces[[tr]]$Cls.tmp = traces[[tr+1]]$Cls.tmp
+      traces[[tr]]$clS.tmp = traces[[tr+1]]$clS.tmp
       traces[[tr]]$matches.tmp = traces[[tr+1]]$matches.tmp
       
       # Put objects of tr in tr+1
@@ -716,7 +716,7 @@ tHMM_chain_swap = function(traces, d, temperatures, deterministic = FALSE, n_try
       traces[[tr+1]]$mu.tmp = mu.tmp
       traces[[tr+1]]$alpha.tmp = alpha.tmp
       traces[[tr+1]]$gamma.tmp = gamma.tmp
-      traces[[tr+1]]$Cls.tmp = Cls.tmp
+      traces[[tr+1]]$clS.tmp = clS.tmp
       traces[[tr+1]]$matches.tmp = matches.tmp
     }
   }

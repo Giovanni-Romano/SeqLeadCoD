@@ -9,7 +9,7 @@ Rcpp::sourceCpp('src/cpp_utils.cpp')
 Rcpp::sourceCpp('src/ArgientoPaci/code/gibbs_utility.cpp')
 Rcpp::sourceCpp('src/ArgientoPaci/code/hyperg2.cpp')
 
-cmline = c("female", 12345) #commandArgs(trailingOnly = TRUE)
+cmline = commandArgs(trailingOnly = TRUE)
 cat("Argument from command line: ", cmline, sep = "")
 sex = cmline[1]
 seed = cmline[2] %>% as.integer
@@ -54,15 +54,15 @@ eta = 0.55
 }
 
 seedrun = seed
-nburn = 2
-nchain = 5
-printstep = 1
+nburn = 5000
+nchain = 25000
+printstep = 2500
 nclinit = 50
 urntype = "Gnedin"
 SAVE = TRUE
 
 # PT parameters
-.nrep = 5
+.nrep = 8
 .ntry = floor(.nrep / 2)
 .start_swap = 1
 .adaptive = TRUE
@@ -86,8 +86,8 @@ out = tHMM_gibbs_adaptive_PT(
                   ncl.init = nclinit, verbose = "1",
                   parallel = FALSE, nthreads = .nrep),
   # Control parameters for Parallel Tempering
-  ctr_swap = list(nrep = .nrep, ntry = .ntry, start = .start_swap, deterministic = .deterministic, adaptive = .adaptive,
-                  prob_target = .prob_target),
+  ctr_swap = list(nrep = .nrep, ntry = .ntry, start = .start_swap, deterministic = .deterministic, 
+                  adaptive = .adaptive, prob_target = .prob_target, swap_step = 5),
   # Control parameters for result storing
   ctr_save = list(save = SAVE, filepath = paste0("output/tHMM/5yrs/", sex, "/"),
                   filename = paste("res_", urntype, seedrun, ".RDS", sep = "")),
