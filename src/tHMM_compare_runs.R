@@ -1,164 +1,247 @@
-suppressPackageStartupMessages({
-  library(tidyverse)
-})
+# Packages ----
+options(warning = 1)
+# source("renv/activate.R")
+suppressPackageStartupMessages(
+  {
+    library(tidyverse)
+    library(mcclust) # comp.psm()
+    library(salso)
+  }
+)
 
-sex = "female"
-OUTFOLDER = paste0("output/tHMM/", sex)
-IMGFOLDER = paste0("img/", sex, "/compare_runs")
-runs = list.files(OUTFOLDER, pattern = "PPE", full.names = F) %>% str_sub(5, 9)
-nruns = length(runs)
-years = 2000:2021
-nyears = length(years)
-causes = readr::read_csv2("data/raw/causes.csv") %>% select(CauseS) %>% unique() %>% unlist() %>% unname() %>% sort() 
-ncauses = length(causes)
+source("src/utils.R")
 
-palette = c(pals::alphabet(26)[-(4:5)], pals::alphabet2(26), pals::glasbey(32))[1:ncauses]
-names(palette) = sort(table(readRDS("data/rds/dataGHE.RDS")$CauseS %>% as.character()), decreasing = T) %>% names
+# Command line arguments ----
+cmndargs = commandArgs(trailingOnly = TRUE)
 
-
-# Save plots? ----
-SAVE = FALSE
-
-# Load data ----
-if (sex == "female"){
-  ghe = readRDS("data/rds/GHEdf_female.RDS")
-} else if (sex == "male"){
-  ghe = readRDS("data/rds/GHEdf_male.RDS")
-} else {
-  stop("Wrong sex value")
+# Load objects ----
+SEX = "male" #cmndargs[1]
+SEEDS = c(20010, 20019, 20146, 20148, 76137)
+NAMES = paste0("Gnedin", SEEDS)
+OUTFOLDER = paste0("output/tHMM/5yrs/", SEX, "/")
+IMGFOLDER = paste0("img/tHMM/5yrs/", SEX, "/compare_runs/")
+if (!dir.exists(IMGFOLDER)){
+  dir.create(IMGFOLDER, recursive = T)
 }
 
-# Load PPE ----
-PPE = abind::abind(lapply(list.files(OUTFOLDER, pattern = "PPE", full.names = T), readRDS), along = 3)
-dimnames(PPE) = list(Country = rownames(PPE), Year = colnames(PPE), Run = runs)
+## Model output ----
+RDS_list = lapply(paste0(OUTFOLDER, "res_", NAMES, ".RDS"), readRDS)
+C_list = lapply(RDS_list, function(RDS) RDS$output$C)
 
-# NMI PPE across runs ----
-NMI = array(NA, dim = c(nruns, nruns, nyears))
-dimnames(NMI) = list(Run1 = runs,
-                     Run2 = runs,
-                     Year = years)
+## Data ----
+ghe = readRDS(paste0("data/rds/GHEdf_", SEX, "_5yrs.RDS"))
 
-for (y in 1:22){
-  for (i in 1:5){
-    for (j in 1:i){
-      NMI[i, j, y] = NMI[j, i, y] = aricode::NMI(PPE[ , y, i], PPE[ , y, j])
+## Define dimensions ----
+ages = levels(ghe$Age)
+nages = length(ages)
+years = sort(unique(ghe$Year))
+nyears = length(years)
+transitions = paste(years[-nyears], years[-1], sep = "-")
+countries = ghe %>% pull(CountryN) %>% unique %>% as.character
+ncountries = length(countries)
+ntransitions = length(transitions)
+nruns = length(SEEDS)
+nburnin = RDS_list[[1]]$input$ctr$ctr_mcmc$nburnin
+niter = (RDS_list[[1]]$input$ctr$ctr_mcmc$nchain + nburnin)
+thin = 10
+idx = seq(nburnin+thin, niter, by = thin)
+
+# Compute and save PSM and PPE ----
+# PSM: Posterior Similarity Matrix
+PSM = lapply(C_list, function(C) {
+  tmp  = apply(C[ , , idx], 2, function(x) comp.psm(t(x)), simplify = FALSE) %>% 
+    abind::abind(., along = 3)
+  dimnames(tmp) = list("Country1" = countries, "Country2" = countries, "Year"  = years)
+  tmp
+})
+names(PSM) = NAMES
+# saveRDS(PSM, file = paste0(OUTFOLDER, "PSM_all.RDS"))
+
+
+# PPE: Partition Point Estimate
+PPE = salso_out = list()
+for (run in seq_along(SEEDS)){
+  cat("Run ", run, ": ")
+  tmp_PPE = matrix(NA, ncountries, nyears)
+  tmp_out = list()
+  C = C_list[[run]]
+  for (y in 1:nyears){
+    cat(y, "\t")
+    tmp_out[[y]] = salso(C[ , y, idx] %>% t, 
+                         loss = VI(),
+                         maxNClusters = 90, maxZealousAttempts = 30,
+                         nRuns = 100,
+                         nCores = 0, # use all the cores
+    )
+    tmp_PPE[ , y] = tmp_out[[y]] %>% as.integer()
+    gc()
+  }
+  dimnames(tmp_PPE) = list("Country" = countries, "year" = years)
+  names(tmp_out) = years
+  PPE[[run]] = tmp_PPE
+  salso_out[[run]] = tmp_out
+  cat("\n")
+}
+names(PPE) = names(salso_out) = SEEDS
+# saveRDS(PPE, file = paste0(OUTFOLDER, "PPE_all.RDS"))
+cat("Done! \n")
+
+# SALSO summary ----
+salso_expLoss = sapply(salso_out, function(out) 
+  sapply(out, function(x) attr(x, "info")["expectedLoss"] %>% as.numeric))
+
+# Some summary plots ----
+# Number of clusters
+ncl = lapply(RDS_list, function(RDS) apply(RDS$output$C, c(2:3), max)) %>% abind::abind(along = 3)
+dimnames(ncl) = list("Year" = years, "Iterations" = 1:niter, "Run" = SEEDS)
+
+pdf(paste0(IMGFOLDER, "ncl.pdf"), width = 12, height = 12)
+par(mfrow = c(5, 5))
+for (y in 1:nyears){
+  min_ncl = min(ncl[y, ,])
+  max_ncl = max(ncl[y, , ])
+  for (run in seq_along(SEEDS)){
+    est_ncl = PPE[[run]][ , y] %>% max
+    
+    plot(ncl[y, -(1:15), run], type = "l", col = 2,
+         ylim = c(min_ncl, max_ncl),
+         ylab = "", xlab = "Iter", main = paste0(years[y], " - Nr. Cl. (Run ", SEEDS[run], ")"),
+         yaxt = "n")
+    axis(side = 2, at = min_ncl:max_ncl)
+    abline(v = nburnin, lty = 2, col = "blue")
+    abline(h = est_ncl, lty = 2, col = "gold")
+    legend("topright", lty = c(1, 2, 2), col = c(2, "gold", "blue"), 
+           legend = c("Nr. Cl.", "Est.",  "burnin"))
+  }
+  
+}
+dev.off()
+
+# NMI consecutive partitions
+NMI_cons = array(NA, dim = c(nruns, nyears, niter/thin))
+for (r in 1:nruns){
+  cat("Run ", r, ": ")
+  for (y in 1:nyears){
+    cat(years[y], "\t")
+    for (i in 2:(niter/thin)){
+      NMI_cons[r, y, i-1] = aricode::NMI(RDS_list[[r]]$output$C[, y, i*thin], RDS_list[[r]]$output$C[, y, (i-1)*thin])
     }
   }
+  cat("\n")
 }
+dimnames(NMI_cons) = list("Run" = SEEDS, "Year" = years, "Iter" = 1:(niter/thin))
 
-plt_NMI = NMI %>% reshape2::melt() %>% 
-  mutate(Run1 = factor(Run1), Run2 = factor(Run2)) %>% 
-  ggplot(aes(x = Run1, y = Run2)) + 
-  geom_raster(aes(fill = value)) +
-  geom_text(aes(label = round(value, 2)), size = 2.75) + 
-  facet_wrap(~Year, nrow = 3) + 
-  scale_fill_viridis_c("NMI", limits = c(0, 1)) + 
-  labs(x = "Seed run #1", y = "Seed run #2",
-       title = "NMI between partition point estimates across 5 runs") + 
-  coord_fixed(ratio = 1) +
-  theme(legend.position = "NULL", 
-        axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-if (SAVE){
-  width = 12; height = 6; zoom = 1 
-  ggsave(filename = "NMI.pdf", path = IMGFOLDER,
-         plot = plt_NMI,
-         width = width*zoom, height = height*zoom)
-}
-
-# Number of clusters ----
-ncl = apply(PPE, c(2, 3), max)
-plt_ncl = ncl %>% as.data.frame() %>% 
-  rownames_to_column("Year") %>% 
-  pivot_longer(-Year, names_to = "Run", values_to = "NCl") %>%
-  mutate(Run = factor(Run), Year = as.integer(Year)) %>% 
-  ggplot(aes(x = Year, y = NCl, col = Run)) +
-  geom_line() + geom_point() + 
-  theme_bw()
-
-if (SAVE){
-  width = 12; height = 6; zoom = 1 
-  ggsave(filename = "ncl.pdf", path = IMGFOLDER,
-         plot = plt_ncl,
-         width = width*zoom, height = height*zoom)
-}
-
-
-# Posterior similarity matrices ----
-PSM = lapply(list.files(OUTFOLDER, pattern = "PSM", full.names = T), 
-             function(x) readRDS(x) %>% abind::abind(along = 3)) %>% 
-  abind::abind(along = 4)
-dimnames(PSM) = list(Country1 = rownames(PSM), Country2 = colnames(PSM),
-                     Year = 2000:2021, Run = runs)
-
-
-plt_PSM = list()
-for (y in seq_along(years)){
-  yyy = years[y] %>% as.character()
-  
-  PSM.y = PSM[ , , yyy, ]
-  # order = data.frame(Country = rownames(PSM), order = hclust(as.dist(1 - PSM.y[ , , 1]), method = "ward.D")$order %>% order())
-  order = hclust(as.dist(1 - PSM.y[ , , 1]), method = "ward.D")$order
-  plt_PSM[[y]] = PSM.y %>% reshape2::melt() %>%
-    mutate(Country1 = factor(Country1, levels = levels(Country1)[order]),
-           Country2 = factor(Country2, levels = levels(Country2)[order])) %>% 
-    ggplot(aes(x = Country1, y = Country2, fill = value)) + 
-    geom_raster() + 
-    facet_grid(~Run) + 
-    labs(title = paste0("Co-clustering probabilities - ", yyy)) + 
-    scale_fill_viridis_c("", limits = c(0, 1)) + 
-    coord_fixed(ratio = 1) +
-    theme_bw() + theme(axis.text = element_blank(), axis.ticks = element_blank(),
-                       axis.title = element_blank())
-}
-
-if (SAVE){
-  width=10; height = 3; zoom = 1
-  ggsave(filename = "PSM.pdf", path = IMGFOLDER,
-         plot = gridExtra::marrangeGrob(plt_PSM, nrow = 1, ncol = 1, top = NULL), 
-         height = height*zoom, width = width*zoom)
-}
-
-# Plot of data split by cluster ----
-ghePPE = ghe %>% 
-  right_join(PPE %>% reshape2::melt(value.name = "Cluster"),
-             by = c("Year", "CountryN" = "Country"),
-             relationship = "many-to-many")
-
-ghePPE %>% filter(Year == 2000, Run %in% c("20010", "20019")) %>% 
-  select(-c(Age, CauseC:CauseT)) %>% distinct() %>% 
-  pivot_wider(names_from = "Run", names_prefix = "Run", values_from = Cluster) %>%
-  mutate(Clust.diff = if_else(Run20010 != Run20019, 1, 0)) %>% 
-  filter(Clust.diff == 1) %>% arrange(Run20010) %>%  View()
-
-
-
-for (y in seq_along(years)){
-  yyy = years[y] %>% as.character()
-  tmp = list()
-  
-  for (r in seq_along(runs)){
-    
-    run = runs[r]
-    
-    
-    tmp[[r]] = ghePPE %>% 
-      filter(Year == 2000, Run == run) %>% 
-      ggplot(aes(x = CountryN, y = Age, fill = CauseS)) + 
-      geom_raster() +
-      facet_grid(cols = vars(Cluster), scales = "free", space = "free") + 
-      scale_fill_manual(values = palette) + 
-      guides(fill = guide_legend(nrow = 2)) +
-      theme(legend.position = "top", 
-            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
-      labs(title = paste0("Run seed ", run))
-  }
-  
-  if (SAVE){
-    width = 32; height = 8; zoom = 1
-    ggsave(filename = paste0("dataPPE_", yyy, ".pdf"),
-           path = IMGFOLDER, 
-           plot = gridExtra::marrangeGrob(tmp, nrow = 1, ncol = 1, top = NULL),
-           width = width*zoom, height = height*zoom)
+pdf(paste0(IMGFOLDER, "NMI_chain.pdf"), width=12, height=12)
+par(mfrow=c(5, 5))
+for (y in 1:nyears){
+  for (r in 1:nruns){
+    plot(seq(thin, niter, by = thin), NMI_cons[r, y, ], type = "l", ylim = c(0.7, 1), xlab = "Iter", ylab = "", 
+         main = paste0(years[y], " - NMI at different lags"))
+    lines(seq(50, niter, by = 50), NMI_cons[r, y, seq(1, dim(NMI_cons)[3], by = 5)], col = 2)
+    legend("bottomright", lty = 1, col = 1:2, legend = c(paste("thin = ", 10), "thin = 50"))
   }
 }
+dev.off()
+
+# Alpha e gamma agreement
+pdf(paste0(IMGFOLDER, "alphagamma.pdf"), width=15, height=12)
+par(mfrow=c(4, 5))
+for (y in 2:nyears){
+  for (r in 1:nruns){
+    plot(seq(thin, niter, by = thin), RDS_list[[r]]$output$alpha[y, seq(thin, niter, by = thin)], 
+         type = "l", ylim = c(0, 1), 
+         xlab = "Iter", ylab = "", 
+         main = paste0(years[y], "- seed ", SEEDS[r], " (thinned by ", thin, ")"))
+    lines(seq(thin, niter, by = thin), RDS_list[[r]]$output$gamma[y, seq(thin, niter, by = thin)], col = 2)
+    abline(v = nburnin, lty = 2, col = "blue")
+    legend("bottomright", lty = c(1, 1, 2), col = c(1:2, "blue"), 
+           legend = c("alpha", "% gamma = 1", "burnin"))
+  }
+}
+dev.off()
+
+
+# Loglikelihood
+log_lik = lapply(RDS_list, function(x) x$output$loglik) %>% abind::abind(along = 3)
+dimnames(log_lik) = list("Year" = years, "Iteration" = 1:niter, "Run" = SEEDS)
+
+plt_logLik = bind_rows(log_lik %>% reshape2::melt() %>%
+                         mutate(Year = factor(Year, levels = c(years, "Total"))),
+                       log_lik %>% reshape2::melt() %>% 
+                         group_by(Run, Iteration) %>%
+                         summarise(value = sum(value), .groups = "drop") %>%
+                         mutate(Year = "Total") %>% 
+                         mutate(Year = factor(Year, levels = c(years, "Total")))) %>%
+  mutate(Run = factor(Run)) %>% 
+  filter(Iteration %in% seq(thin, niter, by = thin)) %>% 
+  ggplot() + 
+  geom_vline(aes(xintercept = nburnin), lty = 2, lwd = 1) +
+  geom_line(aes(x = Iteration, y = value, col = Run)) +
+  facet_wrap(~Year, scales = "free_y") +
+  labs(y = "logLik", title = "logLik during MCMC scheme")
+ggsave(path = IMGFOLDER,
+       plot = plt_logLik,
+       filename = "loglik.pdf",
+       width = 12, height = 6)
+
+
+best_run = which(SEEDS == 20148)
+
+# pheatmap PSM
+PSM_plotlist = list()
+for (y in 1:nyears){
+  ph = pheatmap::pheatmap(PSM[[best_run]][ , , y], treeheight_row=0, treeheight_col=0,
+                          clustering_distance_rows = as.dist(1-PSM[[best_run]][ , , y]),
+                          clustering_distance_cols = as.dist(1-PSM[[best_run]][ , , y]),
+                          clustering_method = "ward.D",
+                          silent = T)
+  order_y = ph$tree_row$order
+  
+  for (r in 1:nruns){
+    run = c(4, 3, 5, 2, 1)[r]
+    df_ann = as.data.frame(PPE[[run]][ , y])
+    colnames(df_ann) = "Cluster"
+    
+    PSM_plotlist[[(y-1)*(nruns) + r]] = pheatmap::pheatmap(PSM[[run]][order_y , order_y, y], 
+                                                          cluster_rows = F, cluster_cols = F, 
+                                                          show_rownames = F, show_colnames = F,
+                                                          border_color = "grey60",
+                                                          clustering_method = "ward.D",
+                                                          annotation_row = df_ann, annotation_col = df_ann,
+                                                          annotation_colors = list(Cluster = pals::glasbey(max(df_ann))),
+                                                          annotation_legend = FALSE,
+                                                          annotation_names_col = FALSE,
+                                                          annotation_names_row = FALSE,
+                                                          
+                                                          main = paste0("Year ", years[y], " - Run ", SEEDS[run]),
+                                                          
+                                                          legend = FALSE,
+                                                          silent = T) %>% ggplotify::as.ggplot()
+  }
+  
+  # PSM_plotlist[[(y-1)*(nruns + 1) + nruns + 1]] = ggplot() + theme_void()
+}
+
+
+ggsave(
+  path = IMGFOLDER,
+  filename = "PSM.pdf", 
+  plot = gridExtra::marrangeGrob(PSM_plotlist, nrow = 1, ncol = 5, top = NULL),
+  width = 20, height = 4)
+
+
+
+# NMI PPE
+NMI_PPE = array(NA, c(nyears, nruns, nruns))
+dimnames(NMI_PPE) = list(Year = years, Run1 = SEEDS, Run2 = SEEDS)
+for (r1 in 1:length(RDS_list)){
+  for (r2 in 1:length(RDS_list)){
+    for (y in 1:nyears)
+    NMI_PPE[y, r1, r2] = aricode::NMI(PPE[[r1]][ , y], PPE[[r2]][ , y])
+  }
+}
+
+NMI_PPE %>% 
+  reshape2::melt() %>% 
+  ggplot() +
+  geom_tile(aes(x = Run1, y =Run2))
