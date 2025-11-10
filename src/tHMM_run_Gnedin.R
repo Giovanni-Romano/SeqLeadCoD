@@ -9,7 +9,7 @@ Rcpp::sourceCpp('src/cpp_utils.cpp')
 Rcpp::sourceCpp('src/ArgientoPaci/code/gibbs_utility.cpp')
 Rcpp::sourceCpp('src/ArgientoPaci/code/hyperg2.cpp')
 
-cmline = commandArgs(trailingOnly = TRUE)
+cmline = c("female", 12345) #commandArgs(trailingOnly = TRUE)
 cat("Argument from command line: ", cmline, sep = "")
 sex = cmline[1]
 seed = cmline[2] %>% as.integer
@@ -41,27 +41,6 @@ p = dim(ghe.array)[2]
 u = rep(4, p)
 v = rep(0.25, p)
 
-# {
-#   val = cbind(m, u, v)
-#   nsig = 10^4
-#   S  = apply(val, 1, function(x) rhyper_sig2(n = nsig, c = x[2], d = x[3], m = x[1]), simplify = T)
-# 
-#   Gmax <- 1 - 1 / m
-# 
-#   gini_values = {
-#     expS = (exp(2 / S) + (matrix(rep(m - 1, each = nrow(S)), ncol = length(m)))) /
-#       (exp(1 / S) + (matrix(rep(m - 1, each = nrow(S)), ncol = length(m))))^2
-#     expS[S < 0.01] = 1
-#     gini_values = t( (1 - t(expS)) / Gmax )
-#   }
-# 
-#   par(mfrow = c(4, 5))
-#   for (j in 1:ncol(gini_values)){
-#     hist(gini_values[ , j], freq = F, breaks = 21, main = paste0("N-Gini, v=", u[j], ", w=", v[j], ", m=", m[j]),
-#          xlab = "Gini values", ylab = "Density", col = "lightblue", border = "black")
-#   }
-# }
-
 eta_values = seq(0.45, 0.55, by = 0.01)
 exp_ncl = sapply(eta_values, function(e) {
   probs_gnedin = HGnedin(n, 1:n, gamma = e)
@@ -75,14 +54,22 @@ eta = 0.55
 }
 
 seedrun = seed
-nburn = 5000
-nchain = 25000
-printstep = 2500
+nburn = 2
+nchain = 5
+printstep = 1
 nclinit = 50
 urntype = "Gnedin"
 SAVE = TRUE
 
-out = tHMM_gibbs(
+# PT parameters
+.nrep = 5
+.ntry = floor(.nrep / 2)
+.start_swap = 1
+.adaptive = TRUE
+.deterministic = TRUE
+.prob_target = 0.65
+
+out = tHMM_gibbs_adaptive_PT(
   Y = ghe.array,
   m = m,
   # Parameters for the likelihood-specific local parameters
@@ -96,9 +83,12 @@ out = tHMM_gibbs(
   ),
   # Control parameters for MCMC settings
   ctr_mcmc = list(seed = seedrun, nburnin = nburn, nchain = nchain, print_step = printstep, 
-                  ncl.init = nclinit, verbose = "2"),
+                  ncl.init = nclinit, verbose = "1",
+                  parallel = FALSE, nthreads = .nrep),
+  # Control parameters for Parallel Tempering
+  ctr_swap = list(nrep = .nrep, ntry = .ntry, start = .start_swap, deterministic = .deterministic, adaptive = .adaptive,
+                  prob_target = .prob_target),
   # Control parameters for result storing
   ctr_save = list(save = SAVE, filepath = paste0("output/tHMM/5yrs/", sex, "/"),
                   filename = paste("res_", urntype, seedrun, ".RDS", sep = "")),
-  ctr_alpha = list(fix_alpha.flag = FALSE)
 )

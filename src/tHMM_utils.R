@@ -110,19 +110,52 @@ mat2vec <- function(clust_matrix){
 # Setting of control objects ----
 set_ctr_mcmc = function(
     seed = 1234, nburnin = 1000, nchain = 5000, print_step = 100, ncl.init = NULL,
-    verbose = c("0", "1", "2")
+    verbose = c("0", "1", "2"), parallel = FALSE, nthreads = 1, cluster = c("PSOCK", "FORK")
 ){
   stopifnot(is.numeric(seed))
   stopifnot(is.numeric(nburnin) & nburnin >= 0)
   stopifnot(is.numeric(nchain) & nchain >= 1)
   stopifnot(is.numeric(print_step) & print_step >= 1)
   stopifnot(is.numeric(ncl.init) & ncl.init >= 1 & ncl.init <= n)
+  stopifnot(is.logical(parallel))
+  stopifnot(is.numeric(nthreads) & nthreads >= 1)
   
   verbose = match.arg(verbose)
+  cluster = match.arg(cluster)
+  nthreads = min(parallel::detectCores()-1, max(1, floor(nthreads)))
   
   list(seed = floor(seed), nburnin = floor(nburnin), nchain = floor(nchain), 
        print_step = floor(print_step), ncl.init = floor(ncl.init),
-       verbose = as.integer(verbose))
+       verbose = as.integer(verbose), 
+       parallel = parallel, nthreads = nthreads, cluster = cluster)
+}
+
+set_ctr_swap = function(
+    nrep = 10, ntry = 1, swap_step = 1, normalize = FALSE, 
+    start = 50, geom_step = 0.9, exp_schedule = -2,
+    rate_gamma = 0.9, rate_delta = 0.1, rate_kappa = 0.75,
+    prob_target = 0.234,
+    deterministic = FALSE, adaptive = TRUE,
+    custom = NULL
+){
+  stopifnot(is.numeric(nrep) & nrep >= 1)
+  stopifnot(is.numeric(ntry) & ntry >= 1)
+  stopifnot(is.numeric(swap_step) & swap_step >= 1)
+  stopifnot(is.logical(normalize))
+  stopifnot(is.numeric(start) & start >= 1)
+  stopifnot(is.numeric(geom_step) & geom_step > 0 & geom_step < 1)
+  stopifnot(is.numeric(exp_schedule))
+  stopifnot(is.numeric(rate_gamma) & rate_gamma > 0 & rate_gamma < 1)
+  stopifnot(is.numeric(rate_delta) & rate_delta > 0)
+  stopifnot(is.numeric(rate_kappa) & rate_kappa > 0.5 & rate_kappa <= 1)
+  stopifnot(is.numeric(prob_target) & prob_target > 0 & prob_target < 1)
+  stopifnot(is.logical(deterministic) & is.logical(adaptive))
+  
+  list(nrep = floor(nrep), ntry = floor(ntry), swap_step = floor(swap_step), 
+       normalize = normalize, start = floor(start), geom_step = geom_step, exp_schedule = exp_schedule,
+       rate_gamma = rate_gamma, rate_delta = rate_delta, rate_kappa = rate_kappa,
+       prob_target = prob_target,
+       deterministic = deterministic, adaptive = adaptive, custom = custom)
 }
 
 set_ctr_save = function(

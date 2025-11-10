@@ -127,44 +127,14 @@ update_label = function(i,
                                     non_empty = non_empty, k = k, Y_it = Y_it, 
                                     mu = mu, mu.new = mu.new)
   clS = suffstat$clS
+  if (sum(clS) != 183){browser()}
   matches = suffstat$matches
   clS_mi = suffstat$clS_mi
   matches_mi = suffstat$matches_mi
-  if (sum(clS_mi) != 182){browser()}
   
   # Log-likelihoods of old and new clusters
-  # log_norm_const.old = norm_const2_mat(clS = clS,
-  #                                  matches = matches,
-  #                                  u = u, v = v, m = m,
-  #                                  log_scale = T)
-  # 
-  # 
-  # log_norm_const_mi.old = norm_const2_mat(clS = clS_mi,
-  #                                     matches = matches_mi,
-  #                                     u = u, v = v, m = m,
-  #                                     log_scale = T)
-  
   log_norm_const = eval_norm_const(clS, matches, cached_I)
   log_norm_const_mi = eval_norm_const(clS_mi, matches_mi, cached_I)
-  # 
-  # if (any(log_norm_const != log_norm_const.old) | any(log_norm_const_mi != log_norm_const_mi.old)){
-  #   stop("Nuovo calcolo di log_norm_const è sbagliato")
-  # }
-  
-  # log_norm_const = matrix(NA, H+1, p)
-  # log_norm_const_mi = matrix(NA, H+1, p)
-  # for (h in 1:(H+1)){
-  #   for(j in 1:p){
-  #     log_norm_const[h, j] = norm_const2(d = v[j] + clS[h] - matches[h, j],
-  #                                        c = u[j] + matches[h, j],
-  #                                        m = m[j], log_scale = T)
-  # 
-  #     log_norm_const_mi[h, j] = norm_const2(d = v[j] + clS_mi[h] - matches_mi[h, j],
-  #                                           c = u[j] + matches_mi[h, j],
-  #                                           m = m[j], log_scale = T)
-  #   }
-  # }
-  
   log_lik = rowSums(log_norm_const - log_norm_const_mi)
   
   
@@ -174,11 +144,6 @@ update_label = function(i,
   # Compatibility checks
   comp_checks = compatibility_check_cppwrapper(i = i, H = H, gamma_tp1 = gamma_tp1,
                                                c_t = C_t, c_tp1 = C_tp1)
-  # comp_checks = compatibility_check(i, H, k, gamma_tp1, C_t, C_tp1, safe = FALSE)
-  
-  # if (any(comp_checks != comp_checks_cpp)){
-  #   browser()
-  # }
   
   # Full-conditional probabilities of cluster assignments
   log_prob = log_lik + log_pr + log(comp_checks)
@@ -205,8 +170,6 @@ update_label = function(i,
   # Expand (if needed) and update S_t
   suffstat = update_suffstat(suffstat, h = C_it, H = H, p = p)
   
-  if (sum(suffstat$clS_new) != 183){browser()}
-  
   # Return the updated partition
   return(list(lab = C_t, center = mu, clS = suffstat$clS_new, matches = suffstat$matches_new))
 }
@@ -218,7 +181,7 @@ update_alpha = function(gamma_t, pr_shape1, pr_shape2){
   rbeta(1, shape1 = shape1, shape2 = shape2)
 }
 
-## UPDATE SUFFSTAT ----
+## CREATE SUFFSTAT ----
 create_suffstat_loglik = function(clS, matches, H, non_empty, k, Y_it, mu, mu.new){
   
   # Reduce the dimensions of the sufficient statistics removing empty clusters
@@ -248,7 +211,7 @@ create_suffstat_loglik = function(clS, matches, H, non_empty, k, Y_it, mu, mu.ne
               matches_i = matches_i))
 }
 
-
+# UPDATE SUFFSTAT ----
 update_suffstat = function(S, h, H, p){
   if (h <= H) {
     add_matches = matrix(0, H, p)
@@ -267,4 +230,65 @@ update_suffstat = function(S, h, H, p){
   S_new = list(clS_new = clS_new, matches_new = matches_new)
   
   return(S_new)
+}
+
+
+#### UPDATE RATE ----
+update_rate = function(iter, gamma, delta, kappa){
+  gamma / (1 + delta * gamma * iter)^kappa
+}
+
+#### UPDATE RHO ----
+update_rho = function(rho, alpha, rate, target, lower = NULL, upper = NULL){
+  rho = rho + rate * (alpha - target)
+  if (!is.null(lower)) rho = pmax(lower, rho)
+  if (!is.null(upper)) rho = pmin(upper, rho)
+  return(rho)
+}
+
+#### UPDATE TEMPERING SCHEDULE ----
+update_temp_schedule = function(rho, normalize = FALSE, decreasing = TRUE){
+  n = length(rho) + 1
+  beta = rep(1, n)
+  for(t in 2:n){
+    beta[t] = beta[t-1] / (1 + beta[t-1] * exp(rho[t-1]))
+  }
+  if (normalize) {
+    minb = min(beta)
+    beta = (beta - minb) / (1 - minb)
+  }
+  beta = sort(beta, decreasing = decreasing)
+  return(beta)
+}
+
+
+#### INITIALIZE TEMPERING SCHEDULE ----
+init_temp_schedule = function(method = c("exp", "geom", "atch2010", "mias2013", "custom"),
+                              custom, n_replica, step, exponent, normalize = TRUE, decreasing = FALSE){
+  method = match.arg(method)
+  sched = switch(method,
+                 "exp" = seq(0, 1, length = n_replica)^(1+exp(exponent)),
+                 "geom" = plogis(step)^(n_replica:1),
+                 "atch2010" = {
+                   beta = seq(1, length = n_replica)
+                   for(t in 2:n_replica){
+                     beta[t] = beta[t-1] / (1 + beta[t-1] * exp(exponent))
+                   }
+                   beta
+                 },
+                 "mias2013" = {
+                   beta = seq(1, length = n_replica)
+                   for(t in 2:n_replica){
+                     beta[t] = beta[t-1] / (1 + exp(exponent))
+                   }
+                   beta
+                 },
+                 "custom" = {custom})
+  
+  if(normalize){
+    sched = (sched - min(sched)) / (max(sched) - min(sched))
+  }
+  sched = sort(sched, decreasing = decreasing)
+  
+  return(sched)
 }
