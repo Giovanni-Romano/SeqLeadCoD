@@ -1,6 +1,8 @@
 tHMM_gibbs_adaptive_PT = function(
     Y,
     m,
+    # Initialization for partitions C
+    C_init = NULL,
     # Parameters for the likelihood-specific local parameters
     par_likelihood = list(u = NULL, # First hyperparam HIG
                           v = NULL # Second hyperparam HIG
@@ -117,7 +119,8 @@ tHMM_gibbs_adaptive_PT = function(
   # OBJECTS TO STORE RESULTS
   traces = lapply(1:ctr_swap$nrep, function(j) {
     initialized_objects = tHMM_gibbs_initialize(Y = Y, n = n, .T = .T, niter = niter,
-                                                ncl.init = ncl_init, p = p)
+                                                ncl.init = ncl_init, p = p,
+                                                C.init = C_init)
     
     initialized_objects[["temperature"]] = temperatures.tmp[j]
     initialized_objects
@@ -848,17 +851,16 @@ tHMM_gibbs_parameters = function(
 }
 
 tHMM_gibbs_initialize = function(Y, n, .T, niter,
-                                 ncl.init, p){
-  # Initialize data storage
-  C = array(NA_integer_, dim = c(n, .T, niter))
-  alpha = array(NA_real_, dim = c(.T, niter))
-  gamma = array(NA_real_, dim = c(.T, niter))
-  log_lik = rep(NA_real_, niter)
+                                 ncl.init, p,
+                                 C.init = NULL){
   
   # Initial values
-  C.initmp = sample(1:ncl.init, n, TRUE)
-  C.initmp = match(C.initmp, sort(unique(C.initmp))) 
-  C.init = matrix(C.initmp, nrow = n, ncol = .T)
+  if (is.null(C.init)){
+    C.initmp = sample(1:ncl.init, n, TRUE)
+    C.initmp = match(C.initmp, sort(unique(C.initmp))) 
+    C.init = matrix(C.initmp, nrow = n, ncol = .T)
+  }
+  
   mu.init = replicate(.T, matrix(NA, nrow = ncl.init, ncol = p), simplify = F)
   for (t in 1:.T){
     for (h in 1:ncl.init){
@@ -889,6 +891,15 @@ tHMM_gibbs_initialize = function(Y, n, .T, niter,
     matches.tmp[[t]] = tmp
   }
   log_lik.tmp = NA
+  
+  # Initialize data storage
+  C = array(NA_integer_, dim = c(n, .T, niter))
+  C[ , , 1] = C.init
+  alpha = array(NA_real_, dim = c(.T, niter))
+  alpha[ , 1] = alpha.init
+  gamma = array(NA_real_, dim = c(.T, niter))
+  gamma[ , 1] = gamma.init[1:.T]
+  log_lik = rep(NA_real_, niter)
   
   # Pre-compute all possible values of normalization constant
   cached_norm_const = build_cached_norm_const(Smax = n, u = u, v = v, m = m)
