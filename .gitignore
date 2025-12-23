@@ -5,7 +5,6 @@
 err_out/
 output/
 img/
-data/
 src/AP_results.R
 src/AP_run.R
 src/AP_simt8.R
